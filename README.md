@@ -58,6 +58,10 @@ Los tests cubren:
 - Recuperación de detalle
 - Manejo de errores (archivos no PDF, nombres vacíos)
 - Persistencia en SQLite
+- Creación de estudios
+- Listado y consulta de estudios
+- Obtención y avance de bloques
+- Creación y consulta de mensajes
 
 ## API
 
@@ -66,19 +70,27 @@ Los tests cubren:
 | POST | `/documents` | Cargar un PDF. Extrae bloques ordenados y los persiste. |
 | GET | `/documents` | Listar documentos. |
 | GET | `/documents/{id}` | Detalle de un documento y sus bloques. |
+| POST | `/studies` | Crear estudio para un documento. |
+| GET | `/studies` | Listar estudios. |
+| GET | `/studies/{id}` | Consultar estado de un estudio. |
+| GET | `/studies/{id}/current-block` | Obtener bloque actual sin avanzar. |
+| POST | `/studies/{id}/blocks/{id}/complete` | Marcar bloque como completado y avanzar. |
+| GET | `/studies/{id}/messages` | Obtener historial de mensajes. |
+| POST | `/studies/{id}/messages` | Crear mensaje en el estudio. |
 
 ## Estructura del servidor
 
 ```
 socratic-server/
 ├── src/socratic/            # Paquete principal (src-layout)
-│   ├── domain/              # Modelos (Document, ContentBlock)
+│   ├── domain/              # Modelos (Document, ContentBlock, Study, Message)
 │   ├── storage/             # Persistencia SQLite
 │   ├── pdf/                 # Extracción de bloques (pdfplumber)
 │   ├── api/                 # Endpoints REST
 │   └── config/              # Configuración
 ├── main.py                  # Entry point FastAPI
-├── tests/                   # Tests
+├── tests/                   # Tests (document + study)
+├── docs/                    # Documentación (api, architecture)
 ├── data/                    # Base de datos SQLite
 └── pyproject.toml           # Dependencias y configuración
 ```
@@ -86,7 +98,7 @@ socratic-server/
 ## Estado actual
 
 Hito 1 completado: carga y extracción de PDFs con persistencia en SQLite.
-Hito 2 en plan: creación de estudio y lectura secuencial de bloques.
+Hito 2 completado: creación de estudio y lectura secuencial de bloques.
 
 Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
 Contexto del producto: [docs/product-context.md](docs/product-context.md)
