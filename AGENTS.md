@@ -42,3 +42,15 @@ PDF → procesamiento → lectura de un párrafo → pregunta → respuesta → 
 ## Operaciones
 
 No hay comandos de build/test/lint/configurados aún. Crear la configuración del lenguaje/framework elegido antes de la primera implementación.
+
+## Reglas de simplicidad y control de complejidad
+
+* No crear una abstracción sin dos implementaciones reales o una necesidad demostrada.
+* No añadir infraestructura para una funcionalidad aplazada.
+* No introducir streaming hasta que exista un caso de uso que lo justifique, como audio, cancelación o latencia perceptible.
+* No diseñar para escalado multiusuario antes de que exista esa necesidad.
+* No intentar resolver PDFs complejos antes de que el flujo funcione correctamente con documentos sencillos y representativos.
+* No añadir RAG, embeddings ni recuperación semántica hasta demostrar que el contexto local es insuficiente.
+* Cada hito debe producir un flujo pequeño, verificable y utilizable de extremo a extremo.
+* Toda nueva capa, patrón o dependencia debe explicar qué problema concreto resuelve.
+* Si una funcionalidad no es necesaria para completar el flujo PDF → leer → preguntar → continuar, queda fuera de la primera versión.
