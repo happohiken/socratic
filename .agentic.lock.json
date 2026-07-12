@@ -1,6 +1,10 @@
 {
   "framework_version": "0.1.0",
   "installed_at": "2026-07-12T06:14:56.426237+00:00",
+  "documentation": {
+    "last_reviewed_commit": "169e2c0a406af41b52307aa185a40e21cd2036a3",
+    "last_reviewed_at": "2026-07-12T09:15:00+00:00"
+  },
   "source": "/home/david/Developer/agentic-repo-framework",
   "managed_core_skills": [
     "commit-work",
