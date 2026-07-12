@@ -7,5 +7,5 @@ from pydantic import BaseModel, Field
 
 class Settings(BaseModel):
     storage_path: Path = Path("data/socratic.db")
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 8885

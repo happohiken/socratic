@@ -38,9 +38,12 @@ pip install -e ".[dev]"
 python -m main
 ```
 
-El servidor estará disponible en `http://127.0.0.1:8885`.
+El servidor escuchará en todas las interfaces de red. Accede desde:
 
-Documentación interactiva: `http://127.0.0.1:8885/docs` (Swagger UI).
+- `http://127.0.0.1:8885` (local)
+- `http://<IP-de-la-maquina>:8885` (desde la LAN)
+
+Documentación interactiva: `http://<IP-de-la-maquina>:8885/docs` (Swagger UI).
 
 ### Ejecutar tests
 
