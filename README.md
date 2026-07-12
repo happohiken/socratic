@@ -50,3 +50,5 @@ Hito 2 en plan: creación de estudio y lectura secuencial de bloques.
 Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
 Contexto del producto: [docs/product-context.md](docs/product-context.md)
 Metodología de documentación: [docs/documentation-methodology.md](docs/documentation-methodology.md)
+API pública: [docs/api.md](docs/api.md)
+Arquitectura del servidor: [docs/architecture.md](docs/architecture.md)
