@@ -13,12 +13,48 @@ PDF → procesamiento → lectura de bloques → pregunta contextual → respues
 
 ## Instalación y ejecución
 
+### Requisitos
+
+- Python 3.12+
+- pip
+
+### Pasos
+
+```bash
+# 1. Entrar en el directorio del servidor
+cd socratic-server
+
+# 2. Crear entorno virtual
+python -m venv .venv
+
+# 3. Activar entorno virtual
+source .venv/bin/activate  # Linux/macOS
+# .venv\Scripts\activate   # Windows
+
+# 4. Instalar dependencias (incluye dev)
+pip install -e ".[dev]"
+
+# 5. Ejecutar servidor
+python -m main
+```
+
+El servidor estará disponible en `http://127.0.0.1:8880`.
+
+Documentación interactiva: `http://127.0.0.1:8880/docs` (Swagger UI).
+
+### Ejecutar tests
+
 ```bash
 cd socratic-server
-python -m venv .venv
-.venv/bin/pip install -e ".[dev]"
-.venv/bin/python -m main
+python -m pytest tests/ -v
 ```
+
+Los tests cubren:
+- Subida de documentos PDF
+- Listado de documentos
+- Recuperación de detalle
+- Manejo de errores (archivos no PDF, nombres vacíos)
+- Persistencia en SQLite
 
 ## API
 
