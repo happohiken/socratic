@@ -68,14 +68,16 @@ Los tests cubren:
 
 ```
 socratic-server/
+├── src/socratic/            # Paquete principal (src-layout)
+│   ├── domain/              # Modelos (Document, ContentBlock)
+│   ├── storage/             # Persistencia SQLite
+│   ├── pdf/                 # Extracción de bloques (pdfplumber)
+│   ├── api/                 # Endpoints REST
+│   └── config/              # Configuración
 ├── main.py                  # Entry point FastAPI
-├── pyproject.toml           # Dependencias y configuración
-└── socratic/
-    ├── domain/              # Modelos (Document, ContentBlock)
-    ├── storage/             # Persistencia SQLite
-    ├── pdf/                 # Extracción de bloques (pdfplumber)
-    ├── api/                 # Endpoints REST
-    └── config/              # Configuración
+├── tests/                   # Tests
+├── data/                    # Base de datos SQLite
+└── pyproject.toml           # Dependencias y configuración
 ```
 
 ## Estado actual

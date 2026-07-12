@@ -1,15 +1,12 @@
 # Arquitectura del Servidor
 
-` socratic-server/` — servidor FastAPI con persistencia SQLite.
+`socratic-server/` — servidor FastAPI con persistencia SQLite, siguiendo `src-layout`.
 
 ## Estructura
 
 ```
 socratic-server/
-├── main.py                  # Entry point, configuración FastAPI
-├── pyproject.toml           # Dependencias y configuración de paquete
-├── data/                    # Base de datos SQLite (socratic.db)
-├── socratic/
+├── src/socratic/            # Paquete principal (src-layout)
 │   ├── domain/              # Modelos de dominio
 │   │   ├── models.py        # Document, ContentBlock
 │   │   └── __init__.py
@@ -26,11 +23,22 @@ socratic-server/
 │   │   ├── settings.py      # Pydantic BaseSettings
 │   │   └── __init__.py
 │   └── __init__.py
+├── main.py                  # Entry point, configuración FastAPI
 ├── tests/
 │   ├── test_document.py     # Tests de endpoints
 │   └── __init__.py
+├── data/                    # Base de datos SQLite (socratic.db)
+├── pyproject.toml           # Dependencias y configuración de paquete
 └── .gitignore
 ```
+
+## Layout `src`
+
+El paquete vive dentro de `src/` (estándar en proyectos Python profesionales):
+
+- Evita que tests y herramientas usen el paquete sin instalar.
+- Permite múltiples versiones del mismo paquete en el mismo entorno.
+- `pyproject.toml` indica `where = ["src"]` para que setuptools lo encuentre.
 
 ## Componentes
 

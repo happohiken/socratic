@@ -19,5 +19,8 @@ dev = [
     "fpdf2>=2.7,<3",
 ]
 
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
