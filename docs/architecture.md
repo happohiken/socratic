@@ -81,5 +81,5 @@ python -m venv .venv
 .venv/bin/python -m main
 ```
 
-Puerto por defecto: `8880`.
+Puerto por defecto: `8885`.
 Base de datos por defecto: `socratic-server/data/socratic.db`.

@@ -38,9 +38,9 @@ pip install -e ".[dev]"
 python -m main
 ```
 
-El servidor estará disponible en `http://127.0.0.1:8880`.
+El servidor estará disponible en `http://127.0.0.1:8885`.
 
-Documentación interactiva: `http://127.0.0.1:8880/docs` (Swagger UI).
+Documentación interactiva: `http://127.0.0.1:8885/docs` (Swagger UI).
 
 ### Ejecutar tests
 

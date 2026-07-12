@@ -1,6 +1,6 @@
 # API Pública - Socratic Server
 
-Servidor FastAPI expuesto en `127.0.0.1:8880`.
+Servidor FastAPI expuesto en `127.0.0.1:8885`.
 
 ## Endpoints
 
