@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from socratic.api.documents import router as documents_router
+from socratic.api.studies import router as studies_router
 from socratic.config.settings import Settings
 from socratic.storage.database import DB, init_db
 
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(documents_router)
+app.include_router(studies_router)
 
 if __name__ == "__main__":
     uvicorn.run(

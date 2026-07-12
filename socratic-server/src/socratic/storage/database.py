@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-from socratic.domain.models import ContentBlock, Document
+from socratic.domain.models import ContentBlock, Document, Message, Study
 
 
 @dataclass
@@ -19,7 +19,7 @@ class DB:
 
 def init_db(path: Path) -> DB:
     path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path))
+    conn = sqlite3.connect(str(path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
@@ -48,6 +48,24 @@ def _create_tables(conn: sqlite3.Connection) -> None:
             block_type      TEXT NOT NULL DEFAULT 'paragraph',
             metadata        TEXT NOT NULL DEFAULT '{}',
             UNIQUE(document_id, ordinal)
+        );
+
+        CREATE TABLE IF NOT EXISTS studies (
+            id                  TEXT PRIMARY KEY,
+            document_id         TEXT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+            current_block_id    TEXT,
+            last_completed_block_id TEXT,
+            created_at          TEXT NOT NULL,
+            updated_at          TEXT NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS messages (
+            id              TEXT PRIMARY KEY,
+            study_id        TEXT NOT NULL REFERENCES studies(id) ON DELETE CASCADE,
+            content_block_id TEXT,
+            role            TEXT NOT NULL,
+            content         TEXT NOT NULL,
+            created_at      TEXT NOT NULL
         );
     """)
 
@@ -176,3 +194,102 @@ def get_content_block(
     )
     row = cur.fetchone()
     return _row_to_block(row) if row else None
+
+
+def _row_to_study(row: sqlite3.Row) -> Study:
+    from datetime import datetime, timezone
+
+    return Study(
+        id=row["id"],
+        document_id=row["document_id"],
+        current_block_id=row["current_block_id"],
+        last_completed_block_id=row["last_completed_block_id"],
+        created_at=datetime.fromisoformat(row["created_at"]),
+        updated_at=datetime.fromisoformat(row["updated_at"]),
+    )
+
+
+def _row_to_message(row: sqlite3.Row) -> Message:
+    from datetime import datetime, timezone
+
+    return Message(
+        id=row["id"],
+        study_id=row["study_id"],
+        content_block_id=row["content_block_id"],
+        role=row["role"],
+        content=row["content"],
+        created_at=datetime.fromisoformat(row["created_at"]),
+    )
+
+
+def save_study(conn: sqlite3.Connection, study: Study) -> None:
+    conn.execute(
+        """INSERT INTO studies
+           (id, document_id, current_block_id, last_completed_block_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (
+            study.id,
+            study.document_id,
+            study.current_block_id,
+            study.last_completed_block_id,
+            study.created_at.isoformat(),
+            study.updated_at.isoformat(),
+        ),
+    )
+
+
+def update_study(conn: sqlite3.Connection, study: Study) -> None:
+    conn.execute(
+        """UPDATE studies
+           SET document_id=?, current_block_id=?, last_completed_block_id=?, updated_at=?
+           WHERE id=?""",
+        (
+            study.document_id,
+            study.current_block_id,
+            study.last_completed_block_id,
+            study.updated_at.isoformat(),
+            study.id,
+        ),
+    )
+
+
+def get_study(conn: sqlite3.Connection, study_id: str) -> Optional[Study]:
+    cur = conn.execute(
+        "SELECT * FROM studies WHERE id=?", (study_id,)
+    )
+    row = cur.fetchone()
+    return _row_to_study(row) if row else None
+
+
+def list_studies(conn: sqlite3.Connection) -> List[Study]:
+    cur = conn.execute(
+        "SELECT * FROM studies ORDER BY created_at DESC"
+    )
+    return [_row_to_study(r) for r in cur.fetchall()]
+
+
+def save_message(conn: sqlite3.Connection, message: Message) -> None:
+    conn.execute(
+        """INSERT INTO messages
+           (id, study_id, content_block_id, role, content, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (
+            message.id,
+            message.study_id,
+            message.content_block_id,
+            message.role,
+            message.content,
+            message.created_at.isoformat(),
+        ),
+    )
+
+
+def get_messages_for_study(
+    conn: sqlite3.Connection,
+    study_id: str,
+) -> List[Message]:
+    cur = conn.execute(
+        "SELECT * FROM messages WHERE study_id=? ORDER BY created_at ASC",
+        (study_id,),
+    )
+    return [_row_to_message(r) for r in cur.fetchall()]
