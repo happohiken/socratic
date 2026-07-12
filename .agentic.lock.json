@@ -1,0 +1,42 @@
+{
+  "framework_version": "0.1.0",
+  "installed_at": "2026-07-12T06:14:56.426237+00:00",
+  "source": "/home/david/Developer/agentic-repo-framework",
+  "managed_core_skills": [
+    "commit-work",
+    "docs-init",
+    "docs-update"
+  ],
+  "managed_files": {
+    ".agentic/skills/commit-work/SKILL.md": {
+      "sha256": "e52201d6081a9a2960ba544b1ae45000cae931925ddea82c51e66dbb95966b4a"
+    },
+    ".agentic/skills/docs-init/SKILL.md": {
+      "sha256": "b8719b4b4c5d1100e45b3dcbcc0abd7d5e63e2ad68c66d3fc8d182fa4c7df6c1"
+    },
+    ".agentic/skills/docs-update/SKILL.md": {
+      "sha256": "b1cfd301e85ac7ecb93a5eabcd1ee288912ed7f2f104826113e4be6931666dfd"
+    },
+    ".claude/skills/commit-work/SKILL.md": {
+      "sha256": "4eb8db12d90a1ca36f1654b79a961213da3df224ba8cf78a256630a94467c963"
+    },
+    ".claude/skills/docs-init/SKILL.md": {
+      "sha256": "a243484cc620f3a6091b0cc776cc9eecb09b637c4f398572fe2f7078d9f3970f"
+    },
+    ".claude/skills/docs-update/SKILL.md": {
+      "sha256": "001204a552d0365c62b2b7ed0bc6908d5b1162daf6fa333382f4026dc3679acb"
+    },
+    ".opencode/skills/commit-work/SKILL.md": {
+      "sha256": "c283bcd0813f57731b3de88e02f0d15691f4b33b7cb83a4d3629f480c30b6573"
+    },
+    ".opencode/skills/docs-init/SKILL.md": {
+      "sha256": "a243484cc620f3a6091b0cc776cc9eecb09b637c4f398572fe2f7078d9f3970f"
+    },
+    ".opencode/skills/docs-update/SKILL.md": {
+      "sha256": "001204a552d0365c62b2b7ed0bc6908d5b1162daf6fa333382f4026dc3679acb"
+    },
+    "docs/documentation-methodology.md": {
+      "sha256": "bccb71950b9ae5da13b9620a42ebbbf8d4e44ffb58a05977ef571142966ccea3"
+    }
+  }
+}
