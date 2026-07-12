@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uvicorn
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -35,3 +36,11 @@ app.add_middleware(
 )
 
 app.include_router(documents_router)
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host=settings.host,
+        port=settings.port,
+        reload=True,
+    )

@@ -17,7 +17,7 @@ PDF → procesamiento → lectura de bloques → pregunta contextual → respues
 cd socratic-server
 python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
-.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+.venv/bin/python -m main
 ```
 
 ## API
