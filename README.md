@@ -82,6 +82,7 @@ socratic current-block <study_id>
 socratic complete-block <study_id> <block_id>
 socratic message <study_id> "¿Pregunta?" --role user
 socratic messages <study_id>
+socratic ask <study_id> "¿Qué significa este término?"
 ```
 
 La URL del servidor se configura con `--url` o la variable de entorno `SOCRATIC_URL`
@@ -108,6 +109,7 @@ python -m pytest tests/ -v
 | POST | `/studies/{id}/blocks/{id}/complete` | Marcar bloque como completado y avanzar. |
 | GET | `/studies/{id}/messages` | Obtener historial de mensajes. |
 | POST | `/studies/{id}/messages` | Crear mensaje en el estudio. |
+| POST | `/studies/{id}/ask` | Enviar pregunta al LLM sobre el bloque actual. Devuelve respuesta y guarda mensaje. |
 
 ## Estructura del servidor
 
@@ -118,6 +120,7 @@ socratic-server/
 │   ├── domain/              # Modelos (Document, ContentBlock, Study, Message)
 │   ├── storage/             # Persistencia SQLite
 │   ├── pdf/                 # Extracción de bloques (pdfplumber)
+│   ├── llm/                 # Interfaz LLM + implementación OpenAI
 │   ├── api/                 # Endpoints REST
 │   └── config/              # Configuración
 ├── main.py                  # Entry point FastAPI
@@ -131,6 +134,7 @@ socratic-server/
 Hito 1 completado: carga y extracción de PDFs con persistencia en SQLite.
 Hito 2 completado: creación de estudio y lectura secuencial de bloques.
 Hito 3 completado: reinicio y recuperación persistente — cerrar y reabrir servidor y CLI conserva documento, bloques, estudio (bloque actual y último completado) e historial de mensajes.
+Hito 4 completado: pregunta contextual al LLM — el servidor compone un contexto mínimo (bloque actual, bloques anteriores, historial breve) y envía la pregunta a un modelo remoto. La respuesta se guarda en el historial sin avanzar la posición de lectura.
 
 Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
 Contexto del producto: [docs/product-context.md](docs/product-context.md)

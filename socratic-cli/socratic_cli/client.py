@@ -94,6 +94,13 @@ class SocraticClient:
             payload["content_block_id"] = content_block_id
         return self._request("POST", f"/studies/{study_id}/messages", json=payload)
 
+    # --- Ask ---
+
+    def ask(self, study_id: str, question: str) -> dict:
+        return self._request(
+            "POST", f"/studies/{study_id}/ask", json={"question": question}
+        )
+
 
 class SocraticAPIError(Exception):
     def __init__(self, status_code: int, detail: str):

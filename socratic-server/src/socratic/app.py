@@ -7,12 +7,22 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from socratic.api.ask import get_llm, router as ask_router
 from socratic.api.documents import router as documents_router
 from socratic.api.studies import router as studies_router
+from socratic.config.settings import Settings
+from socratic.llm.openai_client import OpenAIClient
 from socratic.storage.database import init_db
 
+settings = Settings()
 
-def create_app(storage_path: Path) -> FastAPI:
+llm_client = OpenAIClient(
+    model=settings.llm_model,
+    temperature=settings.llm_temperature,
+)
+
+
+def create_app(storage_path: Path | None = None) -> FastAPI:
     """Construye una instancia de FastAPI con persistencia en `storage_path`.
 
     La BD se inicializa al construir la app para que `app.state.db` esté
@@ -20,7 +30,8 @@ def create_app(storage_path: Path) -> FastAPI:
     con ASGITransport no disparan el lifespan). El shutdown cierra la conexión.
     Permite simular reinicios creando una nueva app apuntando al mismo archivo.
     """
-    db = init_db(storage_path)
+    db_path = storage_path or settings.storage_path
+    db = init_db(db_path)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -35,6 +46,7 @@ def create_app(storage_path: Path) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.db = db
+    app.state.llm = llm_client
 
     app.add_middleware(
         CORSMiddleware,
@@ -45,4 +57,5 @@ def create_app(storage_path: Path) -> FastAPI:
 
     app.include_router(documents_router)
     app.include_router(studies_router)
+    app.include_router(ask_router)
     return app

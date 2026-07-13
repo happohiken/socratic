@@ -221,6 +221,28 @@ def cmd_message(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- Ask ---
+
+
+def cmd_ask(args: argparse.Namespace) -> int:
+    with _client(args) as c:
+        try:
+            data = c.ask(args.study_id, args.question)
+        except SocraticAPIError as e:
+            _err(str(e))
+            return 1
+    print()
+    print(data["answer"])
+    print()
+    _print_kv(
+        [
+            ("message_id", data["message_id"]),
+            ("study_id", data["study_id"]),
+        ]
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="socratic",
@@ -285,6 +307,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--role", default="user", help="user | assistant (default: user)")
     p.add_argument("--block-id", default=None, help="Bloque asociado a la pregunta")
     p.set_defaults(func=cmd_message)
+
+    # ask
+    p = sub.add_parser("ask", help="Hacer una pregunta al LLM sobre el bloque actual")
+    p.add_argument("study_id")
+    p.add_argument("question", help="Pregunta sobre el bloque actual")
+    p.set_defaults(func=cmd_ask)
 
     return parser
 
