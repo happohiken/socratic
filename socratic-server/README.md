@@ -62,13 +62,14 @@ La dirección IP la puedes obtener con `hostname -I` o `ifconfig`.
 
 ## Documentación
 
-- [Documentación de la API](docs/api.md) — Especificación completa de endpoints.
-- [Arquitectura](docs/architecture.md) — Descripción de la estructura del código.
+- [Documentación de la API](../docs/api.md) — Especificación completa de endpoints.
+- [Arquitectura](../docs/architecture.md) — Descripción de la estructura del código.
 
 ## Estructura del proyecto
 
 ```
 src/socratic/
+├── app.py                # Factory create_app(storage_path)
 ├── api/
 │   ├── documents.py      # Endpoints de documentos
 │   └── studies.py        # Endpoints de estudios y mensajes

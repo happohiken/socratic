@@ -23,11 +23,13 @@ socratic-server/
 │   ├── config/              # Configuración
 │   │   ├── settings.py      # Pydantic BaseSettings
 │   │   └── __init__.py
+│   ├── app.py               # create_app(storage_path) — factory de FastAPI
 │   └── __init__.py
-├── main.py                  # Entry point, configuración FastAPI
+├── main.py                  # Entry point: crea app con settings y arranca uvicorn
 ├── tests/
 │   ├── test_document.py     # Tests de documentos
 │   ├── test_study.py        # Tests de estudios y mensajes
+│   ├── test_persistence.py  # Tests de reinicio y recuperación persistente
 │   └── __init__.py
 ├── data/                    # Base de datos SQLite (socratic.db)
 ├── pyproject.toml           # Dependencias y configuración de paquete
@@ -45,7 +47,10 @@ El paquete vive dentro de `src/` (estándar en proyectos Python profesionales):
 ## Componentes
 
 ### `main.py`
-Inicializa FastAPI, incluye routers de documentos y estudios, configura CORS.
+Entry point. Crea la app global con `create_app(settings.storage_path)` y arranca uvicorn. No contiene lógica; delega en `socratic.app.create_app`.
+
+### `socratic/app.py`
+Factory `create_app(storage_path) -> FastAPI`. Inicializa la BD al construir la app (para que `app.state.db` esté disponible sin depender del lifespan startup, útil en tests con ASGITransport) y la cierra en el shutdown. Permite a los tests simular reinicios creando apps nuevas sobre la misma BD.
 
 ### `socratic/domain/models.py`
 Modelos de dominio:
@@ -87,9 +92,33 @@ Configuración de la aplicación:
 - **sqlite3 stdlib** en vez de SQLAlchemy: simplicidad para Hito 1.
 - **pdfplumber** en vez de PyMuPDF: licencia MIT, bueno para PDFs de una columna.
 - **UUID** para identificadores: compatible con API pública y distribuido.
-- **Pydantic Settings**: configuración externalizada via环境变量.
+- **Pydantic Settings**: configuración externalizada via variables de entorno.
 - **check_same_thread=False**: permite usar la misma conexión SQLite en hilos asíncronos de FastAPI.
 - **src-layout**: estándar en proyectos Python profesionales, evita problemas de importación en tests.
+- **Factory `create_app`**: separa la construcción de la app del entry point, permitiendo tests de reinicio sobre la misma BD sin efectos secundarios al importar.
+- **CLI con argparse + httpx (sync)**: sin frameworks de CLI para minimizar dependencias; el servidor es la fuente de verdad y la CLI es un thin view.
+
+## Cliente CLI
+
+`socratic-cli/` — cliente Python que consume la API pública REST.
+
+```
+socratic-cli/
+├── socratic_cli/
+│   ├── __init__.py
+│   ├── __main__.py          # python -m socratic_cli
+│   ├── client.py            # SocraticClient (httpx sync)
+│   └── main.py              # argparse + comandos
+├── tests/
+│   └── test_cli_persistence.py  # Integración real con reinicio del servidor
+├── pyproject.toml
+└── README.md
+```
+
+Comandos: `upload`, `documents`, `document`, `create-study`, `studies`,
+`study`, `current-block`, `complete-block`, `messages`, `message`.
+
+URL configurable con `--url` o `SOCRATIC_URL` (default `http://127.0.0.1:8885`).
 
 ## Despliegue
 
@@ -102,3 +131,9 @@ python -m venv .venv
 
 Puerto por defecto: `8885`.
 Base de datos por defecto: `socratic-server/data/socratic.db`.
+
+```bash
+cd socratic-cli
+.venv/bin/pip install -e .
+.venv/bin/socratic --help
+```
