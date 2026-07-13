@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -243,6 +244,182 @@ def cmd_ask(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- Config ---
+
+
+def _resolve_path(path_str: str) -> Path:
+    return Path(path_str).expanduser()
+
+
+def _load_opencode_config() -> dict:
+    config_path = _resolve_path("~/.config/opencode/opencode.json")
+    if not config_path.is_file():
+        _err(f"No se encontró el archivo: {config_path}")
+        sys.exit(1)
+    try:
+        text = config_path.read_text(encoding="utf-8")
+    except OSError as e:
+        _err(f"No se pudo leer el archivo: {e}")
+        sys.exit(1)
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        _err(f"JSON inválido en {config_path}: {e}")
+        sys.exit(1)
+
+
+def _list_providers(config: dict) -> list[str]:
+    providers = config.get("provider", {})
+    if not providers:
+        _err("No se encontraron proveedores configurados en opencode.json")
+        sys.exit(1)
+    return list(providers.keys())
+
+
+def _list_models(provider_config: dict) -> list[str]:
+    models = provider_config.get("models", {})
+    if not models:
+        _err(f"No se encontraron modelos en el proveedor")
+        sys.exit(1)
+    return list(models.keys())
+
+
+def _resolve_api_key(provider_config: dict) -> str | None:
+    options = provider_config.get("options", {})
+    api_key = options.get("apiKey")
+    if api_key:
+        return api_key
+    env_ref = options.get("api_key_env")
+    if env_ref:
+        return os.environ.get(env_ref)
+    return None
+
+
+def _resolve_base_url(provider_config: dict) -> str | None:
+    options = provider_config.get("options", {})
+    return options.get("baseURL") or options.get("base_url")
+
+
+def _resolve_timeout(provider_config: dict) -> int | None:
+    options = provider_config.get("options", {})
+    timeout = options.get("timeout")
+    if timeout is False or timeout == 0:
+        return None
+    if isinstance(timeout, (int, float)) and timeout > 0:
+        return int(timeout)
+    return None
+
+
+def _select_interactively(prompt: str, options: list[str]) -> str:
+    for i, opt in enumerate(options, 1):
+        print(f"  {i}. {opt}", file=sys.stderr)
+    while True:
+        try:
+            choice = input(f"\n{prompt} [1-{len(options)}]: ")
+            idx = int(choice) - 1
+            if 0 <= idx < len(options):
+                return options[idx]
+        except (ValueError, EOFError):
+            pass
+        print("Opción no válida.", file=sys.stderr)
+
+
+def _shell_escape(value: str) -> str:
+    escaped = value.replace("'", "'\\''")
+    return f"'{escaped}'"
+
+
+def cmd_config_import_opencode(args: argparse.Namespace) -> int:
+    config = _load_opencode_config()
+
+    providers = _list_providers(config)
+
+    if args.provider:
+        if args.provider not in providers:
+            _err(
+                f"Proveedor '{args.provider}' no encontrado. "
+                f"Proveedores disponibles: {', '.join(providers)}"
+            )
+            return 1
+        provider_name = args.provider
+    else:
+        if len(providers) == 1:
+            provider_name = providers[0]
+        else:
+            print("Proveedores configurados:", file=sys.stderr)
+            provider_name = _select_interactively("Selecciona un proveedor", providers)
+
+    provider_config = config["provider"][provider_name]
+
+    available_models = _list_models(provider_config)
+
+    if args.model:
+        model_name = args.model
+    else:
+        if len(available_models) == 1:
+            model_name = available_models[0]
+        else:
+            print(f"\nModelos disponibles en {provider_name}:", file=sys.stderr)
+            model_name = _select_interactively("Selecciona un modelo", available_models)
+
+    if model_name not in provider_config["models"]:
+        _err(
+            f"Modelo '{model_name}' no encontrado. "
+            f"Modelos disponibles: {', '.join(available_models)}"
+        )
+        return 1
+
+    model_config = provider_config["models"][model_name]
+
+    base_url = _resolve_base_url(provider_config)
+    if not base_url:
+        _err(
+            f"baseURL no encontrado para el proveedor '{provider_name}'. "
+            "No se puede conectar sin una URL base."
+        )
+        return 1
+
+    api_key = _resolve_api_key(provider_config)
+    if not api_key:
+        _err(
+            f"API key no resolvable para el proveedor '{provider_name}'. "
+            "Las variables de entorno exportadas no contendrán la API key."
+        )
+
+    timeout = _resolve_timeout(provider_config)
+    if timeout is None:
+        timeout = 120
+
+    env_vars = {
+        "SOCRATIC_LLM_PROVIDER": "openai-compatible",
+        "SOCRATIC_LLM_BASE_URL": base_url,
+        "SOCRATIC_LLM_MODEL": model_name,
+        "SOCRATIC_LLM_API_KEY": api_key or "",
+        "SOCRATIC_LLM_TIMEOUT_SECONDS": str(timeout),
+    }
+
+    if args.export_shell:
+        for key, value in env_vars.items():
+            if value:
+                print(f"export {key}={_shell_escape(value)}")
+            else:
+                print(f"unset {key}")
+        return 0
+
+    if args.print_env:
+        print(
+            "ADVERTENCIA: esta salida puede contener secretos (API key). "
+            "No la redirijas a un archivo en el repositorio.",
+            file=sys.stderr,
+        )
+        for key, value in env_vars.items():
+            print(f"{key}={value}")
+        return 0
+
+    _err("Debe especificar --export-shell o --print-env")
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="socratic",
@@ -314,12 +491,46 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("question", help="Pregunta sobre el bloque actual")
     p.set_defaults(func=cmd_ask)
 
+    # config
+    config_parser = sub.add_parser("config", help="Gestión de configuración")
+    config_sub = config_parser.add_subparsers(dest="config_command", required=True)
+
+    # config import-opencode
+    p = config_sub.add_parser(
+        "import-opencode",
+        help="Importar configuración de OpenCode a variables de entorno",
+    )
+    p.add_argument(
+        "--provider",
+        default=None,
+        help="Nombre del proveedor en opencode.json",
+    )
+    p.add_argument(
+        "--model",
+        default=None,
+        help="Nombre del modelo dentro del proveedor",
+    )
+    mode_group = p.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument(
+        "--export-shell",
+        action="store_true",
+        help="Exportar variables para sesión actual (compatible con sh/bash/zsh)",
+    )
+    mode_group.add_argument(
+        "--print-env",
+        action="store_true",
+        help="Exportar variables para systemd (formato KEY=value)",
+    )
+    p.set_defaults(func=cmd_config_import_opencode)
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if getattr(args, "config_command", None):
+        return cmd_config_import_opencode(args)
     return args.func(args)
 
 

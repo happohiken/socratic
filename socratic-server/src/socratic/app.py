@@ -48,8 +48,11 @@ def create_app(
     )
     app.state.db = db
     app.state.llm = llm_client or OpenAIClient(
+        api_key=settings.llm_api_key,
+        base_url=settings.llm_base_url,
         model=settings.llm_model,
         temperature=settings.llm_temperature,
+        timeout=settings.llm_timeout_seconds,
     )
 
     app.add_middleware(

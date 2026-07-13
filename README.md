@@ -88,6 +88,27 @@ socratic ask <study_id> "¿Qué significa este término?"
 La URL del servidor se configura con `--url` o la variable de entorno `SOCRATIC_URL`
 (default `http://127.0.0.1:8885`).
 
+### Configuración del LLM
+
+Para conectar el servidor con un proveedor compatible con OpenAI, importa la
+configuración desde OpenCode:
+
+```bash
+# Vista previa (formato systemd)
+socratic config import-opencode --provider zcube-local --model qwen3.6-35b-a3b --print-env
+
+# Exportar variables para la sesión actual
+eval "$(socratic config import-opencode --provider zcube-local --model qwen3.6-35b-a3b --export-shell)"
+
+# Arrancar el servidor con las variables exportadas
+socratic-server
+```
+
+Las variables que se generan son: `SOCRATIC_LLM_PROVIDER`, `SOCRATIC_LLM_BASE_URL`,
+`SOCRATIC_LLM_MODEL`, `SOCRATIC_LLM_API_KEY`, `SOCRATIC_LLM_TIMEOUT_SECONDS`.
+
+La salida de `--print-env` puede contener secretos (API key). No la guardes en el repositorio.
+
 Tests de la CLI (incluyen integración real con reinicio del servidor):
 
 ```bash

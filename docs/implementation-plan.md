@@ -240,3 +240,29 @@ La CLI ejecuta el flujo completo con un PDF real: cargar PDF → crear estudio �
 7. Cada hito debe producir un flujo utilizable de extremo a extremo.
 8. Toda nueva capa debe explicar qué problema concreto resuelve.
 9. Si una funcionalidad no es necesaria para completar el flujo PDF → leer → preguntar → continuar, queda fuera.
+
+---
+
+## Configuración del LLM
+
+El servidor lee la configuración del LLM desde variables de entorno con prefijo `SOCRATIC_`:
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `SOCRATIC_LLM_PROVIDER` | Proveedor (siempre `openai-compatible`) | `openai-compatible` |
+| `SOCRATIC_LLM_BASE_URL` | URL del endpoint de completado | — (requerido) |
+| `SOCRATIC_LLM_MODEL` | Nombre del modelo | `gpt-4o-mini` |
+| `SOCRATIC_LLM_API_KEY` | Clave API del proveedor | — (requerido) |
+| `SOCRATIC_LLM_TIMEOUT_SECONDS` | Timeout en segundos | `120` |
+
+La CLI proporciona `socratic config import-opencode` para importar la configuración
+desde `~/.config/opencode/opencode.json`:
+
+- `--export-shell`: genera `export KEY='value'` para usar con `eval`.
+- `--print-env`: genera `KEY=value` para copiar en systemd.
+- `--provider <nombre>` y `--model <nombre>` para selección no interactiva.
+
+Los dos modos son mutuamente excluyentes. Si falta alguno de los dos, la orden falla.
+
+La API key se extrae directamente del campo `options.apiKey` de opencode.json.
+Si no está disponible, se genera el resto de variables y se muestra un error por stderr.

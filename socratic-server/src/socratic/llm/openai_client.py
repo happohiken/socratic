@@ -17,11 +17,13 @@ class OpenAIClient(LLMClient):
         base_url: str | None = None,
         model: str = "gpt-4o-mini",
         temperature: float = 0.0,
+        timeout: int = 120,
     ) -> None:
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self._base_url = base_url
         self._model = model
         self._temperature = temperature
+        self._timeout = timeout
         self._client: OpenAI | None = None
 
     @property
@@ -30,6 +32,7 @@ class OpenAIClient(LLMClient):
             self._client = OpenAI(
                 api_key=self._api_key,
                 base_url=self._base_url,
+                timeout=self._timeout,
             )
         return self._client
 

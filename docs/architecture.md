@@ -82,10 +82,19 @@ Endpoints REST para estudios y mensajes:
 - `POST /studies/{id}/messages` — Crear mensaje
 
 ### `socratic/config/settings.py`
-Configuración de la aplicación:
+Configuración de la aplicación, externalizada mediante variables de entorno con prefijo `SOCRATIC_`:
 - `storage_path`: ruta a la base de datos SQLite (default: `data/socratic.db`)
 - `host`: interfaz de escucha (default: `0.0.0.0`)
 - `port`: puerto (default: `8885`)
+- `llm_provider`: proveedor LLM (default: `openai-compatible`)
+- `llm_base_url`: URL base del endpoint de completado (p. ej. `http://localhost:8080/v1`)
+- `llm_model`: nombre del modelo (default: `gpt-4o-mini`)
+- `llm_temperature`: temperatura (default: `0.0`)
+- `llm_api_key`: clave API del proveedor
+- `llm_timeout_seconds`: timeout en segundos (default: `120`)
+
+Se puede importar la configuración de OpenCode con:
+` socratic config import-opencode --provider <nombre> --model <nombre> --export-shell`
 
 ## Decisiones
 
