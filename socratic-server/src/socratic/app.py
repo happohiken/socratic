@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from contextlib import asynccontextmanager
 
@@ -11,18 +12,18 @@ from socratic.api.ask import get_llm, router as ask_router
 from socratic.api.documents import router as documents_router
 from socratic.api.studies import router as studies_router
 from socratic.config.settings import Settings
+from socratic.llm.base import LLMClient
 from socratic.llm.openai_client import OpenAIClient
 from socratic.storage.database import init_db
 
 settings = Settings()
 
-llm_client = OpenAIClient(
-    model=settings.llm_model,
-    temperature=settings.llm_temperature,
-)
 
-
-def create_app(storage_path: Path | None = None) -> FastAPI:
+def create_app(
+    storage_path: Path | None = None,
+    llm_client: LLMClient | None = None,
+    **kwargs: Any,
+) -> FastAPI:
     """Construye una instancia de FastAPI con persistencia en `storage_path`.
 
     La BD se inicializa al construir la app para que `app.state.db` esté
@@ -46,7 +47,10 @@ def create_app(storage_path: Path | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.db = db
-    app.state.llm = llm_client
+    app.state.llm = llm_client or OpenAIClient(
+        model=settings.llm_model,
+        temperature=settings.llm_temperature,
+    )
 
     app.add_middleware(
         CORSMiddleware,

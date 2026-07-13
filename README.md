@@ -135,6 +135,7 @@ Hito 1 completado: carga y extracción de PDFs con persistencia en SQLite.
 Hito 2 completado: creación de estudio y lectura secuencial de bloques.
 Hito 3 completado: reinicio y recuperación persistente — cerrar y reabrir servidor y CLI conserva documento, bloques, estudio (bloque actual y último completado) e historial de mensajes.
 Hito 4 completado: pregunta contextual al LLM — el servidor compone un contexto mínimo (bloque actual, bloques anteriores, historial breve) y envía la pregunta a un modelo remoto. La respuesta se guarda en el historial sin avanzar la posición de lectura.
+Hito 5 completado: validación del flujo completo — la CLI ejecuta el flujo extremo a extremo con un PDF real: cargar PDF → crear estudio → leer bloques → hacer pregunta contextual → recibir respuesta → continuar lectura → cerrar y reiniciar → recuperar posición.
 
 Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
 Contexto del producto: [docs/product-context.md](docs/product-context.md)

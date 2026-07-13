@@ -178,6 +178,8 @@ Definir la interfaz mínima del LLM y una implementación concreta. Implementar 
 ### Hito 5: Validación del flujo completo
 La CLI ejecuta el flujo completo con un PDF real: cargar PDF → crear estudio → leer bloques secuenciales → hacer una pregunta sobre el bloque actual → recibir respuesta → continuar lectura → cerrar y reiniciar → recuperar posición.
 
+**Estado: completado.** Test en `socratic-cli/tests/test_full_flow.py`.
+
 ---
 
 ## 7. Criterios verificables para completar cada hito
