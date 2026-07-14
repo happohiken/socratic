@@ -216,7 +216,7 @@ La CLI ejecuta el flujo completo con un PDF real: cargar PDF → crear estudio �
 * Interfaz gráfica (Flet descartado, CLI inicial).
 * WebSocket, SSE, gRPC, streaming de texto/audio.
 * TTS en el servidor, STT.
-* RAG, embeddings, búsqueda vectorial.
+* RAG, embeddings, búsqueda vectorial. (Implementado: módulo `socratic/retrieval/` con txtai + sentence-transformers. Indexación y recuperación documental sobre el documento actual, con filtrado por document_id.)
 * Resúmenes acumulados por párrafo.
 * OCR.
 * Procesamiento perfecto de tablas, capítulos y secciones.
@@ -266,3 +266,54 @@ Los dos modos son mutuamente excluyentes. Si falta alguno de los dos, la orden f
 
 La API key se extrae directamente del campo `options.apiKey` de opencode.json.
 Si no está disponible, se genera el resto de variables y se muestra un error por stderr.
+
+---
+
+## Recuperación documental (txtai)
+
+Módulo `socratic/retrieval/` que añade indexación vectorial y recuperación de bloques
+relevantes de cualquier parte del documento actual.
+
+### Arquitectura
+
+```
+CLI → REST → FastAPI → RetrievalService → DocumentRetriever (Protocol) → TxtaiDocumentRetriever → txtai
+```
+
+SQLite es la fuente de verdad. txtai es un índice de recuperación reconstruible.
+
+### Configuración
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `SOCRATIC_RETRIEVAL_STORAGE` | Ruta del índice vectorial | `data/retrieval/` |
+| `SOCRATIC_EMBEDDING_MODEL` | Modelo de embeddings | `sentence-transformers/all-MiniLM-L6-v2` |
+| `SOCRATIC_RETRIEVAL_LIMIT` | Máx. resultados por búsqueda | `5` |
+| `SOCRATIC_RETRIEVAL_CONTEXT_LIMIT_CHARS` | Límite de contexto recuperado | `2000` |
+
+### Indexación
+
+- Se invoca con `socratic reindex` (todos los documentos) o `socratic reindex <document-id>`.
+- Se usa `upsert` para que la indexación repetida sea segura (sin duplicados).
+- Solo se descartan bloques vacíos, solo espacios o solo puntuación.
+- Se conservan todos los tipos: heading, paragraph, list, unknown.
+
+### Contexto ampliado en `POST /studies/{id}/ask`
+
+1. System prompt
+2. Bloque actual
+3. 2 bloques anteriores
+4. 2 bloques siguientes
+5. Fragmentos recuperados (txtai, deduplicados por block_id)
+6. Historial reciente (últimas 4 mensagens)
+7. Pregunta del usuario
+
+### Endpoints
+
+- `POST /documents/{id}/reindex` — indexa un documento (202 Accepted)
+- `POST /documents/{id}/search` — búsqueda de diagnóstico (diagnóstico)
+
+### Modelo de embeddings
+
+`sentence-transformers/all-MiniLM-L6-v2` — multilingüe (incluye español), ~23MB,
+licencia Apache 2.0, default de txtai.
