@@ -267,6 +267,87 @@ Crea un mensaje en el estudio. Se usa para guardar preguntas del usuario y respu
 }
 ```
 
+---
+
+## Preguntas contextuales
+
+### POST /studies/{study_id}/ask
+
+Envía una pregunta sobre el bloque actual de lectura. El servidor compone un contexto ampliado con el bloque actual, bloques anteriores y siguientes, fragmentos recuperados del documento completo mediante indexación vectorial, historial reciente y la pregunta. La respuesta se guarda en el historial sin avanzar la posición de lectura.
+
+**Cuerpo de la solicitud**:
+
+```json
+{
+  "question": "¿Qué significa este término?"
+}
+```
+
+**Respuesta 201**:
+
+```json
+{
+  "answer": "El término se refiere a...",
+  "study_id": "uuid",
+  "message_id": "uuid"
+}
+```
+
+**Errores**:
+- `404` — Estudio no encontrado.
+- `400` — El estudio no tiene bloque actual.
+
+---
+
+## Recuperación documental
+
+### POST /documents/{document_id}/reindex
+
+Indexa todos los bloques de un documento para recuperación vectorial mediante txtai. Devuelve 202 Accepted para indicar que la indexación se ha completado.
+
+**Respuesta 202**:
+
+```json
+{
+  "status": "indexed",
+  "blocks": 8
+}
+```
+
+**Errores**:
+- `404` — Documento no encontrado.
+
+### POST /documents/{document_id}/search
+
+Busca bloques relevantes en un documento indexado. Se usa para diagnóstico. Filtra por document_id mediante consulta SQL en txtai.
+
+**Cuerpo de la solicitud**:
+
+```json
+{
+  "query": "machine learning medicina",
+  "limit": 5
+}
+```
+
+**Respuesta 200**:
+
+```json
+[
+  {
+    "block_id": "uuid",
+    "page_number": 1,
+    "ordinal": 8,
+    "block_type": "paragraph",
+    "score": 0.5973,
+    "text": "El machine learning representa una herramienta fundamental..."
+  }
+]
+```
+
+**Errores**:
+- `404` — Documento no encontrado.
+
 ## Formato de respuesta
 
 Todas las respuestas son JSON. Las fechas usan ISO 8601 con timezone UTC.
