@@ -81,6 +81,8 @@ socratic documents
 socratic create-study <document_id>
 socratic current-block <study_id>
 socratic complete-block <study_id> <block_id>
+socratic next-block <study_id>          # obtiene, imprime y completa el bloque actual
+socratic previous-block <study_id>      # retrocede al bloque anterior (solo lectura)
 socratic message <study_id> "¿Pregunta?" --role user
 socratic messages <study_id>
 socratic ask <study_id> "¿Qué significa este término?"

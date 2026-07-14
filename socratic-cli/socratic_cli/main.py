@@ -194,6 +194,91 @@ def cmd_complete_block(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_next_block(args: argparse.Namespace) -> int:
+    with _client(args) as c:
+        try:
+            block_data = c.get_current_block(args.study_id)
+        except SocraticAPIError as e:
+            if e.status_code == 400 and "no tiene bloque actual" in str(e):
+                _err("El estudio ha llegado al final del documento.")
+                return 0
+            _err(str(e))
+            return 1
+
+        print(block_data["text"])
+
+        if args.verbose:
+            _print_kv(
+                [
+                    ("block_id", block_data["id"]),
+                    ("ordinal", block_data["ordinal"]),
+                    ("page", block_data["page_number"]),
+                    ("type", block_data["block_type"]),
+                ]
+            )
+
+        try:
+            c.complete_block(args.study_id, block_data["id"])
+        except SocraticAPIError as e:
+            _err(str(e))
+            return 1
+
+    return 0
+
+
+def cmd_previous_block(args: argparse.Namespace) -> int:
+    with _client(args) as c:
+        try:
+            study_data = c.get_study(args.study_id)
+        except SocraticAPIError as e:
+            _err(str(e))
+            return 1
+
+        current_block_id = study_data["current_block_id"]
+        document_id = study_data["document_id"]
+
+        if not current_block_id:
+            _err("El estudio no tiene bloque actual.")
+            return 1
+
+        try:
+            doc_data = c.get_document(document_id)
+        except SocraticAPIError as e:
+            _err(str(e))
+            return 1
+
+        blocks = doc_data.get("blocks", [])
+        current_index = None
+        for i, b in enumerate(blocks):
+            if b["id"] == current_block_id:
+                current_index = i
+                break
+
+        if current_index is None:
+            _err(f"No se encontró el bloque actual {current_block_id} en el documento.")
+            return 1
+
+        if current_index == 0:
+            _err("Ya estás en el primer bloque.")
+            return 1
+
+        prev_block = blocks[current_index - 1]
+
+        print(prev_block["text"])
+
+        if args.verbose:
+            _print_kv(
+                [
+                    ("block_id", prev_block["id"]),
+                    ("ordinal", prev_block["ordinal"]),
+                    ("page", prev_block["page_number"]),
+                    ("type", prev_block["block_type"]),
+                ]
+            )
+
+    return 0
+
+
 # --- Mensajes ---
 
 
@@ -488,6 +573,32 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("study_id")
     p.add_argument("block_id")
     p.set_defaults(func=cmd_complete_block)
+
+    # next-block
+    p = sub.add_parser(
+        "next-block",
+        help="Avanzar al siguiente bloque: obtiene, imprime y completa el bloque actual",
+    )
+    p.add_argument("study_id")
+    p.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Mostrar metadatos del bloque (block_id, ordinal, página, tipo)",
+    )
+    p.set_defaults(func=cmd_next_block)
+
+    # previous-block
+    p = sub.add_parser(
+        "previous-block",
+        help="Retroceder al bloque anterior (solo lectura, no modifica el estudio)",
+    )
+    p.add_argument("study_id")
+    p.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Mostrar metadatos del bloque (block_id, ordinal, página, tipo)",
+    )
+    p.set_defaults(func=cmd_previous_block)
 
     # messages
     p = sub.add_parser("messages", help="Listar mensajes de un estudio")
