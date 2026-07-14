@@ -13,8 +13,14 @@ socratic-server/
 │   ├── storage/             # Capa de persistencia
 │   │   ├── database.py      # Conexión SQLite, CRUD
 │   │   └── __init__.py
-│   ├── pdf/                 # Procesamiento de PDFs
-│   │   ├── parser.py        # Extracción de bloques con pdfplumber
+│   ├── pdf/                 # Procesamiento legacy (pendiente de eliminar)
+│   │   ├── parser.py        # Extracción antigua por líneas -- ya no usada por la API
+│   │   └── __init__.py
+│   ├── document_processing/ # Parser documental compartido
+│   │   ├── extractor.py     # parse_pdf() -- fusión de líneas, detección cabeceras/pies
+│   │   ├── adapter.py       # ParsedDocument -> Document + ContentBlock
+│   │   ├── classifier.py    # Clasificación de nodos (heading, paragraph, list_item)
+│   │   ├── formatters.py    # Formato texto/JSON para inspect-pdf
 │   │   └── __init__.py
 │   ├── api/                 # Endpoints REST
 │   │   ├── documents.py     # POST/GET /documents
@@ -62,12 +68,24 @@ Modelos de dominio:
 ### `socratic/storage/database.py`
 Conexión SQLite via stdlib `sqlite3` con `check_same_thread=False` para soporte multi-hilo. CRUD para Document, ContentBlock, Study y Message. Tablas: documents, content_blocks, studies, messages.
 
-### `socratic/pdf/parser.py`
-Extracción de texto con `pdfplumber`. Agrupa palabras por coordenada Y (tolerancia 5px) en líneas, luego en bloques. Clasifica bloques como paragraph, heading, list o unknown.
+### `socratic/document_processing/extractor.py`
+Parser documental principal. Compartido entre `socratic inspect-pdf` y `POST /documents`. Usa `pdfplumber` para extraer texto con información de fuentes, fusiona líneas en párrafos, detecta y elimina cabeceras/pies repetidos, clasifica nodos (heading, paragraph, list_item) y devuelve un `ParsedDocument` con nodos ordenados por lectura.
+
+### `socratic/document_processing/adapter.py`
+Adaptador que convierte `ParsedDocument` en modelos de dominio persistentes (`Document` + `list[ContentBlock]`). Conserva metadatos (bbox, font, level) en `ContentBlock.metadata`.
+
+### `socratic/document_processing/classifier.py`
+Clasificación de nodos basada en fuente y texto: headings (bold), list items (prefijos), párrafos.
+
+### `socratic/document_processing/formatters.py`
+Formateo de `ParsedDocument` a texto legible o JSON para `inspect-pdf`.
+
+### `socratic/pdf/parser.py` (legacy)
+Extracción antigua por líneas con tolerancia Y de 5px. Ya no es usada por la API. Pendiente de eliminación.
 
 ### `socratic/api/documents.py`
 Endpoints REST:
-- `POST /documents` — Subida y extracción
+- `POST /documents` — Subida y extracción (usa `parse_pdf()` compartido con `inspect-pdf`)
 - `GET /documents` — Listado
 - `GET /documents/{id}` — Detalle con bloques
 

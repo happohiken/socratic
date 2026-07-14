@@ -143,8 +143,8 @@ socratic-server/
 │   ├── app.py               # Factory create_app(storage_path)
 │   ├── domain/              # Modelos (Document, ContentBlock, Study, Message)
 │   ├── storage/             # Persistencia SQLite
-│   ├── pdf/                 # Extracción de bloques (pdfplumber)
-│   ├── document_processing/ # Herramienta de inspección documental
+│   ├── pdf/                 # Extracción legacy (pdfplumber) -- pendiente de eliminar
+│   ├── document_processing/ # Parser documental compartido (extractor + adapter)
 │   ├── llm/                 # Interfaz LLM + implementación OpenAI
 │   ├── api/                 # Endpoints REST
 │   └── config/              # Configuración
