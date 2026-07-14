@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from socratic_cli.client import SocraticAPIError, SocraticClient
+from socratic_cli.inspect_pdf import add_inspect_pdf_parser
 
 DEFAULT_URL = "http://127.0.0.1:8885"
 
@@ -490,6 +491,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("study_id")
     p.add_argument("question", help="Pregunta sobre el bloque actual")
     p.set_defaults(func=cmd_ask)
+
+    # inspect-pdf
+    add_inspect_pdf_parser(sub)
 
     # config
     config_parser = sub.add_parser("config", help="Gestión de configuración")

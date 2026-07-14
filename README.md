@@ -83,6 +83,9 @@ socratic complete-block <study_id> <block_id>
 socratic message <study_id> "¿Pregunta?" --role user
 socratic messages <study_id>
 socratic ask <study_id> "¿Qué significa este término?"
+
+# Inspeccionar la descomposición de un PDF sin subirlo al servidor
+socratic inspect-pdf ruta/al.pdf [--format json] [--pages 1-5]
 ```
 
 La URL del servidor se configura con `--url` o la variable de entorno `SOCRATIC_URL`
@@ -141,6 +144,7 @@ socratic-server/
 │   ├── domain/              # Modelos (Document, ContentBlock, Study, Message)
 │   ├── storage/             # Persistencia SQLite
 │   ├── pdf/                 # Extracción de bloques (pdfplumber)
+│   ├── document_processing/ # Herramienta de inspección documental
 │   ├── llm/                 # Interfaz LLM + implementación OpenAI
 │   ├── api/                 # Endpoints REST
 │   └── config/              # Configuración
