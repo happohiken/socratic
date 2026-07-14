@@ -48,6 +48,9 @@ pytest tests/ -v
 - `POST /studies/{id}/blocks/{blockId}/complete` — Marcar bloque como completado
 - `GET /studies/{id}/messages` — Obtener historial de mensajes
 - `POST /studies/{id}/messages` — Crear mensaje
+- `POST /studies/{id}/ask` — Pregunta contextual con contexto ampliado
+- `POST /documents/{id}/reindex` — Indexar documento para recuperación (202)
+- `POST /documents/{id}/search` — Buscar bloques relevantes (diagnóstico)
 
 ## Acceso por LAN
 
@@ -72,13 +75,21 @@ src/socratic/
 ├── app.py                # Factory create_app(storage_path)
 ├── api/
 │   ├── documents.py      # Endpoints de documentos
-│   └── studies.py        # Endpoints de estudios y mensajes
+│   ├── studies.py        # Endpoints de estudios y mensajes
+│   ├── ask.py            # Preguntas contextuales (contexto ampliado)
+│   └── retrieval.py      # Indexación y búsqueda de diagnóstico
 ├── config/
 │   └── settings.py       # Configuración de la aplicación
 ├── domain/
 │   └── models.py         # Modelos de dominio
 ├── pdf/
 │   └── parser.py         # Parser de PDFs con pdfplumber
+├── document_processing/  # Parser documental (extractor + adapter)
+├── llm/                  # Interfaz LLM + implementación OpenAI
+├── retrieval/            # Indexación y recuperación documental (txtai)
+│   ├── models.py         # RetrievedBlock, DocumentRetriever, Context
+│   ├── txtai_backend.py  # TxtaiDocumentRetriever
+│   └── service.py        # RetrievalService
 └── storage/
     └── database.py       # Acceso a base de datos SQLite
 ```

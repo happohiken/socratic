@@ -23,8 +23,19 @@ socratic documents
 socratic create-study <document_id>
 socratic current-block <study_id>
 socratic complete-block <study_id> <block_id>
+socratic next-block <study_id>
+socratic previous-block <study_id>
 socratic message <study_id> "¿Pregunta?" --role user
 socratic messages <study_id>
+socratic ask <study_id> "¿Qué significa este término?"
+socratic delete <document_id>
+
+# Recuperación documental
+socratic reindex [<document_id>]
+socratic search-document <id> "consulta"
+
+# Inspeccionar un PDF
+socratic inspect-pdf ruta/al.pdf [--format json] [--pages 1-5]
 ```
 
 La URL del servidor se configura con `--url` o la variable de entorno
@@ -50,6 +61,8 @@ socratic --url http://192.168.1.10:8885 documents
 | `complete-block <study_id> <block_id>` | Marcar un bloque como completado y avanzar |
 | `messages <study_id>` | Listar mensajes de un estudio |
 | `message <study_id> <content> [--role ROLE] [--block-id ID]` | Crear un mensaje |
+| `reindex [<document_id>]` | Indexar todos los documentos o un concreto para recuperación |
+| `search-document <id> <query> [--limit N]` | Buscar bloques relevantes (diagnóstico) |
 
 ## Tests
 

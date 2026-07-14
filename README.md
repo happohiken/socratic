@@ -11,6 +11,22 @@ El sistema está formado por:
 
 PDF → procesamiento → lectura de bloques → pregunta contextual → respuesta → reanudación
 
+## Recuperación documental
+
+El servidor indexa el documento completo para responder preguntas sobre cualquier
+parte del texto, no solo el bloque actual.
+
+```bash
+# Indexar todos los documentos
+socratic reindex
+
+# Indexar un documento concreto
+socratic reindex <document_id>
+
+# Buscar bloques relevantes (diagnóstico)
+socratic search-document <document_id> "consulta"
+```
+
 ## Instalación y ejecución
 
 ### Requisitos
@@ -88,6 +104,10 @@ socratic messages <study_id>
 socratic ask <study_id> "¿Qué significa este término?"
 socratic delete <document_id>
 
+# Recuperación documental
+socratic reindex [<document_id>]        # indexa todos o un documento concreto
+socratic search-document <id> "consulta"  # diagnóstico de recuperación
+
 # Inspeccionar la descomposición de un PDF sin subirlo al servidor
 socratic inspect-pdf ruta/al.pdf [--format json] [--pages 1-5]
 ```
@@ -116,6 +136,18 @@ Las variables que se generan son: `SOCRATIC_LLM_PROVIDER`, `SOCRATIC_LLM_BASE_UR
 
 La salida de `--print-env` puede contener secretos (API key). No la guardes en el repositorio.
 
+### Configuración de recuperación
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `SOCRATIC_RETRIEVAL_STORAGE` | Ruta del índice vectorial | `data/retrieval/` |
+| `SOCRATIC_EMBEDDING_MODEL` | Modelo de embeddings | `sentence-transformers/all-MiniLM-L6-v2` |
+| `SOCRATIC_RETRIEVAL_LIMIT` | Máx. resultados por búsqueda | `5` |
+| `SOCRATIC_RETRIEVAL_CONTEXT_LIMIT_CHARS` | Límite de contexto recuperado | `2000` |
+
+El modelo se descarga la primera vez que se usa y se cachea.
+El directorio `data/retrieval/` se excluye de Git.
+
 Tests de la CLI (incluyen integración real con reinicio del servidor):
 
 ```bash
@@ -139,6 +171,8 @@ python -m pytest tests/ -v
 | GET | `/studies/{id}/messages` | Obtener historial de mensajes. |
 | POST | `/studies/{id}/messages` | Crear mensaje en el estudio. |
 | POST | `/studies/{id}/ask` | Enviar pregunta al LLM sobre el bloque actual. Devuelve respuesta y guarda mensaje. |
+| POST | `/documents/{id}/reindex` | Indexar un documento para recuperación vectorial (202 Accepted). |
+| POST | `/documents/{id}/search` | Buscar bloques relevantes en un documento indexado (diagnóstico). |
 
 ## Estructura del servidor
 
@@ -151,11 +185,19 @@ socratic-server/
 │   ├── pdf/                 # Extracción legacy (pdfplumber) -- pendiente de eliminar
 │   ├── document_processing/ # Parser documental compartido (extractor + adapter)
 │   ├── llm/                 # Interfaz LLM + implementación OpenAI
+│   ├── retrieval/           # Indexación y recuperación documental (txtai)
+│   │   ├── models.py        # RetrievedBlock, DocumentRetriever, Context
+│   │   ├── txtai_backend.py # TxtaiDocumentRetriever
+│   │   └── service.py       # RetrievalService
 │   ├── api/                 # Endpoints REST
+│   │   ├── documents.py     # Documentos
+│   │   ├── studies.py       # Estudios y mensajes
+│   │   ├── ask.py           # Preguntas contextuales
+│   │   └── retrieval.py     # Reindex y búsqueda de diagnóstico
 │   └── config/              # Configuración
 ├── main.py                  # Entry point FastAPI
-├── tests/                   # Tests (document, study, persistence)
-├── data/                    # Base de datos SQLite
+├── tests/                   # Tests (document, study, persistence, retrieval)
+├── data/                    # Base de datos SQLite + índice vectorial
 └── pyproject.toml           # Dependencias y configuración
 ```
 
@@ -166,6 +208,8 @@ Hito 2 completado: creación de estudio y lectura secuencial de bloques.
 Hito 3 completado: reinicio y recuperación persistente — cerrar y reabrir servidor y CLI conserva documento, bloques, estudio (bloque actual y último completado) e historial de mensajes.
 Hito 4 completado: pregunta contextual al LLM — el servidor compone un contexto mínimo (bloque actual, bloques anteriores, historial breve) y envía la pregunta a un modelo remoto. La respuesta se guarda en el historial sin avanzar la posición de lectura.
 Hito 5 completado: validación del flujo completo — la CLI ejecuta el flujo extremo a extremo con un PDF real: cargar PDF → crear estudio → leer bloques → hacer pregunta contextual → recibir respuesta → continuar lectura → cerrar y reiniciar → recuperar posición.
+
+Recuperación documental: módulo `socratic/retrieval/` con indexación vectorial (txtai + sentence-transformers). El contexto de `POST /studies/{id}/ask` incluye ahora 2 bloques anteriores, 2 siguientes y fragmentos recuperados del documento completo.
 
 Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
 Contexto del producto: [docs/product-context.md](docs/product-context.md)
