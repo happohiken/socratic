@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import shutil
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -10,8 +9,12 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from fastapi.requests import Request
 from pydantic import BaseModel
 
+from socratic.document_processing.adapter import (
+    parsed_to_content_blocks,
+    parsed_to_document,
+)
+from socratic.document_processing.extractor import parse_pdf
 from socratic.domain.models import ContentBlock, Document
-from socratic.pdf.parser import count_pages, extract_blocks_from_pdf
 from socratic.storage.database import (
     DB,
     get_content_block,
@@ -67,19 +70,18 @@ async def upload_document(file: UploadFile, db: DB = Depends(get_db)):
         shutil.copyfileobj(file.file, tmp)
 
     try:
-        page_count = count_pages(tmp_path)
-        blocks = extract_blocks_from_pdf(tmp_path)
+        parsed = parse_pdf(tmp_path)
 
-        doc = Document(
-            filename=file.filename,
-            page_count=page_count,
-            block_count=len(blocks),
-        )
-        for b in blocks:
-            b.document_id = doc.id
-
+        doc = parsed_to_document(parsed, file.filename)
         save_document(db.conn, doc)
+
+        blocks = parsed_to_content_blocks(doc.id, parsed)
         save_content_blocks(db.conn, doc.id, blocks)
+    except Exception:
+        db.conn.rollback()
+        raise
+    else:
+        db.conn.commit()
     finally:
         tmp_path.unlink(missing_ok=True)
 

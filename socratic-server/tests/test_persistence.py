@@ -1,7 +1,7 @@
-"""Hito 3 — Reinicio y recuperación persistente.
+"""Hito 3 — Reinicio y recuperacion persistente.
 
 Verifica que cerrar y reabrir el servidor sobre la misma base de datos conserva
-documento, bloques, estudio (bloque actual y último completado) e historial
+documento, bloques, estudio (bloque actual y ultimo completado) e historial
 de mensajes. Se simula el reinicio creando dos apps FastAPI independientes que
 apuntan al mismo archivo SQLite.
 """
@@ -23,15 +23,19 @@ def sample_pdf(tmp_path: Path) -> Path:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Helvetica", size=12)
-    pdf.cell(200, 10, "Título del documento de prueba", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(200, 10, "Primer párrafo de contenido.", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(200, 10, "Segundo párrafo con más texto.", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 10, "Titulo del documento de prueba.", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 30, "Primer parrafo de contenido con texto largo para evitar fusion.", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 30, "Segundo parrafo con mas texto para probar la extraccion.", new_x="LMARGIN", new_y="NEXT")
+    pdf.add_page()
+    pdf.set_font("Helvetica", size=12)
+    pdf.cell(200, 30, "Tercer parrafo en la segunda pagina.", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(200, 30, "Cuarto parrafo que cierra el documento de prueba.", new_x="LMARGIN", new_y="NEXT")
     pdf.output(str(pdf_path))
     return pdf_path
 
 
 async def _upload_and_progress(db_path: Path, pdf_path: Path) -> dict:
-    """Primera 'sesión' del servidor: carga PDF, crea estudio, avanza y pregunta."""
+    """Primera 'sesion' del servidor: carga PDF, crea estudio, avanza y pregunta."""
     app = create_app(db_path)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -52,7 +56,7 @@ async def _upload_and_progress(db_path: Path, pdf_path: Path) -> dict:
 
         resp = await client.post(
             f"/studies/{study_id}/messages",
-            json={"content": "¿De qué trata el título?", "role": "user"},
+            json={"content": "De que trata el titulo?", "role": "user"},
         )
         assert resp.status_code == 201
 
@@ -78,7 +82,7 @@ async def _upload_and_progress(db_path: Path, pdf_path: Path) -> dict:
 
 
 async def _verify_after_restart(db_path: Path, ids: dict) -> None:
-    """Segunda 'sesión' del servidor: verifica que todo se conservó."""
+    """Segunda 'sesion' del servidor: verifica que todo se conservo."""
     app = create_app(db_path)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
@@ -115,7 +119,7 @@ async def _verify_after_restart(db_path: Path, ids: dict) -> None:
         assert len(messages) == 2
         assert messages[0]["role"] == "user"
         assert messages[1]["role"] == "assistant"
-        assert messages[0]["content"] == "¿De qué trata el título?"
+        assert messages[0]["content"] == "De que trata el titulo?"
 
 
 @pytest.mark.anyio
@@ -130,7 +134,7 @@ async def test_state_survives_server_restart(tmp_path: Path, sample_pdf: Path):
 async def test_completed_blocks_survive_multiple_restarts(
     tmp_path: Path, sample_pdf: Path
 ):
-    """Avanza un bloque por sesión y reinicia dos veces: el progreso acumulado se conserva."""
+    """Avanza un bloque por sesion y reinicia dos veces: el progreso acumulado se conserva."""
     db_path = tmp_path / "socratic.db"
 
     app = create_app(db_path)
@@ -146,7 +150,7 @@ async def test_completed_blocks_survive_multiple_restarts(
         resp = await client.post("/studies", json={"document_id": document_id})
         study_id = resp.json()["id"]
 
-    # Sesión 2: completar primer bloque
+    # Sesion 2: completar primer bloque
     app = create_app(db_path)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -158,7 +162,7 @@ async def test_completed_blocks_survive_multiple_restarts(
         )
         second_block_id = resp.json()["current_block_id"]
 
-    # Sesión 3: verificar y completar segundo bloque
+    # Sesion 3: verificar y completar segundo bloque
     app = create_app(db_path)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -170,9 +174,10 @@ async def test_completed_blocks_survive_multiple_restarts(
         resp = await client.post(
             f"/studies/{study_id}/blocks/{second_block_id}/complete"
         )
+        assert resp.status_code == 200
         third_block_id = resp.json()["current_block_id"]
 
-    # Sesión 4: verificar progreso acumulado
+    # Sesion 4: verificar progreso acumulado
     app = create_app(db_path)
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

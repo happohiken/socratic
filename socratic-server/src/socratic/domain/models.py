@@ -13,6 +13,7 @@ class Document:
     page_count: int = 0
     block_count: int = 0
     format: str = "pdf"
+    metadata: dict = field(default_factory=dict)
     created_at: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
