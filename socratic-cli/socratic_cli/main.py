@@ -229,40 +229,38 @@ def cmd_next_block(args: argparse.Namespace) -> int:
 def cmd_previous_block(args: argparse.Namespace) -> int:
     with _client(args) as c:
         try:
-            study_data = c.get_study(args.study_id)
+            data = c.previous_block(args.study_id)
         except SocraticAPIError as e:
+            if e.status_code == 400 and "primer bloque" in str(e):
+                _err("Ya estás en el primer bloque.")
+                return 1
+            if e.status_code == 400 and "no tiene bloque actual" in str(e):
+                _err("El estudio no tiene bloques completados para retroceder.")
+                return 1
             _err(str(e))
             return 1
 
-        current_block_id = study_data["current_block_id"]
-        document_id = study_data["document_id"]
-
-        if not current_block_id:
-            _err("El estudio no tiene bloque actual.")
-            return 1
+        study_id = data["id"]
+        current_block_id = data["current_block_id"]
 
         try:
-            doc_data = c.get_document(document_id)
+            doc_data = c.get_document(
+                c.get_study(study_id)["document_id"]
+            )
         except SocraticAPIError as e:
             _err(str(e))
             return 1
 
         blocks = doc_data.get("blocks", [])
-        current_index = None
-        for i, b in enumerate(blocks):
+        prev_block = None
+        for b in blocks:
             if b["id"] == current_block_id:
-                current_index = i
+                prev_block = b
                 break
 
-        if current_index is None:
+        if prev_block is None:
             _err(f"No se encontró el bloque actual {current_block_id} en el documento.")
             return 1
-
-        if current_index == 0:
-            _err("Ya estás en el primer bloque.")
-            return 1
-
-        prev_block = blocks[current_index - 1]
 
         print(prev_block["text"])
 

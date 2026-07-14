@@ -232,6 +232,75 @@ def complete_block(
     )
 
 
+@router.post(
+    "/{study_id}/previous-block",
+    response_model=StudyResponse,
+)
+def previous_block(
+    study_id: str,
+    db: DBDep,
+) -> Study:
+    """Retroceder al bloque anterior.
+
+    Actualiza current_block_id al bloque anterior del documento.
+    Si current_block_id es None, usa last_completed_block_id como punto de partida.
+    """
+    study = get_study(db.conn, study_id)
+    if not study:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Estudio {study_id} no encontrado",
+        )
+
+    doc = get_document(db.conn, study.document_id)
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Documento {study.document_id} no encontrado",
+        )
+
+    from socratic.storage.database import get_content_blocks
+
+    blocks = get_content_blocks(db.conn, study.document_id)
+    block_ids = [b.id for b in blocks]
+
+    if not block_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El documento no tiene bloques",
+        )
+
+    # Si current_block_id es None (fin del documento), retroceder desde last_completed
+    if study.current_block_id is None:
+        if study.last_completed_block_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El estudio no tiene bloques completados para retroceder",
+            )
+        # Volver al último bloque completado
+        study.current_block_id = study.last_completed_block_id
+    else:
+        current_index = block_ids.index(study.current_block_id)
+        if current_index == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya estás en el primer bloque",
+            )
+        study.current_block_id = block_ids[current_index - 1]
+    study.touch()
+    update_study(db.conn, study)
+    db.conn.commit()
+
+    return StudyResponse(
+        id=study.id,
+        document_id=study.document_id,
+        current_block_id=study.current_block_id,
+        last_completed_block_id=study.last_completed_block_id,
+        created_at=study.created_at.isoformat(),
+        updated_at=study.updated_at.isoformat(),
+    )
+
+
 @router.get("/{study_id}/messages", response_model=List[MessageResponse])
 def get_messages(study_id: str, db: DBDep) -> List[Message]:
     """Obtener el historial de mensajes de un estudio."""

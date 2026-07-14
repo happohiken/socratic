@@ -80,6 +80,9 @@ class SocraticClient:
             "POST", f"/studies/{study_id}/blocks/{block_id}/complete"
         )
 
+    def previous_block(self, study_id: str) -> dict:
+        return self._request("POST", f"/studies/{study_id}/previous-block")
+
     # --- Messages ---
 
     def list_messages(self, study_id: str) -> list[dict]:

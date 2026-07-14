@@ -200,6 +200,27 @@ Marca un bloque como completado y avanza la posición al siguiente bloque.
 - `404` — Estudio o documento no encontrado.
 - `400` — El bloque no pertenece al documento.
 
+### POST /studies/{study_id}/previous-block
+
+Retrocede al bloque anterior del documento. Actualiza `current_block_id` al bloque anterior. Si `current_block_id` es `None` (fin del documento), vuelve al último bloque completado.
+
+**Respuesta 200**:
+
+```json
+{
+  "id": "uuid",
+  "document_id": "uuid",
+  "current_block_id": "uuid",
+  "last_completed_block_id": "uuid",
+  "created_at": "2026-07-12T12:00:00Z",
+  "updated_at": "2026-07-12T12:00:00Z"
+}
+```
+
+**Errores**:
+- `404` — Estudio o documento no encontrado.
+- `400` — Ya estás en el primer bloque / no tiene bloques completados para retroceder.
+
 ### GET /studies/{study_id}/messages
 
 Obtiene el historial de mensajes de un estudio, ordenado por fecha de creación.

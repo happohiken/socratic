@@ -87,7 +87,7 @@ def _setup_study(tmp_path: Path, server: _Server):
 
 
 def test_previous_block_moves_back(tmp_path: Path):
-    """Completa bloque 1, previous-block muestra bloque 0."""
+    """Completa bloque 1, previous-block muestra bloque 0 y avanza current_block."""
     server = _Server(tmp_path / "socratic.db")
     server.start()
     try:
@@ -97,14 +97,13 @@ def test_previous_block_moves_back(tmp_path: Path):
         result1 = cli_main(["--url", server.url, "next-block", study_id])
         assert result1 == 0
 
-        # previous-block debe mostrar el primer bloque
+        # previous-block debe mostrar el primer bloque Y actualizar current_block
         result2 = cli_main(["--url", server.url, "previous-block", study_id])
         assert result2 == 0
 
-        # previous-block es solo lectura: current_block no cambia
         with SocraticClient(server.url) as c:
             current = c.get_current_block(study_id)
-            assert "Segundo párrafo" in current["text"]
+            assert "Primer párrafo del documento de prueba." in current["text"]
     finally:
         server.stop()
 
@@ -124,10 +123,10 @@ def test_previous_block_uses_previous_ordinal(tmp_path: Path):
         result = cli_main(["--url", server.url, "previous-block", study_id])
         assert result == 0
 
-        # previous-block es solo lectura: current_block no cambia
+        # current_block debe haber cambiado al segundo bloque
         with SocraticClient(server.url) as c:
             current = c.get_current_block(study_id)
-            assert "Tercer párrafo" in current["text"]
+            assert "Segundo párrafo con contenido diferente." in current["text"]
     finally:
         server.stop()
 
@@ -152,10 +151,9 @@ def test_previous_block_consecutive_moves_back_twice(tmp_path: Path):
         result1 = cli_main(["--url", server.url, "previous-block", study_id])
         assert result1 == 0
 
-        # previous-block es solo lectura: current_block no cambia
         with SocraticClient(server.url) as c:
             after1 = c.get_current_block(study_id)
-            assert "Tercer párrafo" in after1["text"]
+            assert "Segundo párrafo" in after1["text"]
 
         # Segundo retroceso: primer bloque
         result2 = cli_main(["--url", server.url, "previous-block", study_id])
@@ -163,7 +161,7 @@ def test_previous_block_consecutive_moves_back_twice(tmp_path: Path):
 
         with SocraticClient(server.url) as c:
             after2 = c.get_current_block(study_id)
-            assert "Tercer párrafo" in after2["text"]
+            assert "Primer párrafo" in after2["text"]
     finally:
         server.stop()
 
@@ -182,6 +180,35 @@ def test_previous_block_first_block_error(tmp_path: Path):
         server.stop()
 
 
+def test_previous_block_from_end_of_document(tmp_path: Path):
+    """Retroceder desde el final del documento (current_block_id es None)."""
+    server = _Server(tmp_path / "socratic.db")
+    server.start()
+    try:
+        study_id, _ = _setup_study(tmp_path, server)
+
+        # Avanzar hasta el final del documento
+        cli_main(["--url", server.url, "next-block", study_id])
+        cli_main(["--url", server.url, "next-block", study_id])
+        cli_main(["--url", server.url, "next-block", study_id])
+
+        # Ahora current_block_id es None, last_completed_block_id es el bloque 3
+        with SocraticClient(server.url) as c:
+            study = c.get_study(study_id)
+            assert study["current_block_id"] is None
+            assert study["last_completed_block_id"] is not None
+
+        # previous-block debe retroceder al bloque 3
+        result = cli_main(["--url", server.url, "previous-block", study_id])
+        assert result == 0
+
+        with SocraticClient(server.url) as c:
+            current = c.get_current_block(study_id)
+            assert "Tercer párrafo" in current["text"]
+    finally:
+        server.stop()
+
+
 def test_previous_block_study_not_found(tmp_path: Path):
     """Study inexistente (404) → error → return 1."""
     server = _Server(tmp_path / "socratic.db")
@@ -196,7 +223,7 @@ def test_previous_block_study_not_found(tmp_path: Path):
 
 
 def test_previous_block_no_state_change(tmp_path: Path):
-    """previous-block no modifica current_block_id del estudio."""
+    """previous-block actualiza current_block_id al bloque anterior."""
     server = _Server(tmp_path / "socratic.db")
     server.start()
     try:
@@ -208,16 +235,17 @@ def test_previous_block_no_state_change(tmp_path: Path):
         with SocraticClient(server.url) as c:
             before = c.get_study(study_id)
             current_before = before["current_block_id"]
-            completed_before = before["last_completed_block_id"]
 
-        # previous-block no debe cambiar el estado
+        # previous-block debe cambiar current_block_id
         result = cli_main(["--url", server.url, "previous-block", study_id])
         assert result == 0
 
         with SocraticClient(server.url) as c:
             after = c.get_study(study_id)
-            assert after["current_block_id"] == current_before
-            assert after["last_completed_block_id"] == completed_before
+            assert after["current_block_id"] != current_before
+            # Debería estar en el primer bloque
+            current = c.get_current_block(study_id)
+            assert "Primer párrafo" in current["text"]
     finally:
         server.stop()
 
