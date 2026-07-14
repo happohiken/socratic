@@ -53,3 +53,21 @@ def _looks_like_heading(text: str, font: FontInfo) -> bool:
         if font.size > 0 and font.bold:
             return True
     return False
+
+
+def _starts_with_list_prefix(text: str) -> bool:
+    """Return True if *text* begins with a character that marks a list item."""
+    stripped = text.lstrip()
+    if not stripped:
+        return False
+    first_char = stripped[0]
+    if first_char in _LIST_PREFIXES:
+        return True
+    import re
+    if re.match(r"^\d+[\.\)\:]\s", stripped):
+        return True
+    if re.match(r"^[a-zA-Z][\.\)\:]\s", stripped):
+        return True
+    if re.match(r"^[IVXLC]+[\.\)\:]\s", stripped.upper()):
+        return True
+    return False
