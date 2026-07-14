@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from socratic.api.ask import get_db, router as ask_router
 from socratic.domain.models import ContentBlock, Document, Study
 from socratic.llm.base import LLMClient
+from socratic.retrieval import RetrievalService, TxtaiDocumentRetriever
 from socratic.storage.database import (
     init_db,
     get_messages_for_study,
@@ -27,6 +30,16 @@ def db(tmp_path):
 @pytest.fixture
 def llm_client():
     return StubLLM(response="Esta es la respuesta del LLM")
+
+
+@pytest.fixture
+def retrieval_service(tmp_path, db):
+    storage = tmp_path / "retrieval"
+    retriever = TxtaiDocumentRetriever(
+        storage_path=storage,
+        embedding_model="sentence-transformers/all-MiniLM-L6-v2",
+    )
+    return RetrievalService(retriever=retriever, db=db)
 
 
 @pytest.fixture
@@ -55,7 +68,7 @@ def sample_study(db):
 
 
 @pytest.mark.anyio
-async def test_ask_stores_messages_in_db(db, llm_client):
+async def test_ask_stores_messages_in_db(db, llm_client, retrieval_service):
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
@@ -63,6 +76,7 @@ async def test_ask_stores_messages_in_db(db, llm_client):
     app.include_router(ask_router)
     app.dependency_overrides[get_db] = lambda: db
     app.state.llm = llm_client
+    app.state.retrieval = retrieval_service
 
     doc = Document(filename="test.pdf", page_count=1, block_count=3)
     save_document(db.conn, doc)
@@ -105,7 +119,7 @@ async def test_ask_stores_messages_in_db(db, llm_client):
 
 
 @pytest.mark.anyio
-async def test_ask_context_includes_current_block(db, llm_client):
+async def test_ask_context_includes_current_block(db, llm_client, retrieval_service):
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
@@ -113,6 +127,7 @@ async def test_ask_context_includes_current_block(db, llm_client):
     app.include_router(ask_router)
     app.dependency_overrides[get_db] = lambda: db
     app.state.llm = llm_client
+    app.state.retrieval = retrieval_service
 
     doc = Document(filename="test.pdf", page_count=1, block_count=3)
     save_document(db.conn, doc)
@@ -148,7 +163,7 @@ async def test_ask_context_includes_current_block(db, llm_client):
 
 
 @pytest.mark.anyio
-async def test_ask_context_includes_previous_blocks(db, llm_client):
+async def test_ask_context_includes_previous_blocks(db, llm_client, retrieval_service):
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
@@ -156,6 +171,7 @@ async def test_ask_context_includes_previous_blocks(db, llm_client):
     app.include_router(ask_router)
     app.dependency_overrides[get_db] = lambda: db
     app.state.llm = llm_client
+    app.state.retrieval = retrieval_service
 
     doc = Document(filename="test.pdf", page_count=1, block_count=3)
     save_document(db.conn, doc)
@@ -191,7 +207,7 @@ async def test_ask_context_includes_previous_blocks(db, llm_client):
 
 
 @pytest.mark.anyio
-async def test_ask_study_not_found(db, llm_client):
+async def test_ask_study_not_found(db, llm_client, retrieval_service):
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
@@ -199,6 +215,7 @@ async def test_ask_study_not_found(db, llm_client):
     app.include_router(ask_router)
     app.dependency_overrides[get_db] = lambda: db
     app.state.llm = llm_client
+    app.state.retrieval = retrieval_service
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
@@ -210,7 +227,7 @@ async def test_ask_study_not_found(db, llm_client):
 
 
 @pytest.mark.anyio
-async def test_ask_no_current_block(db, llm_client):
+async def test_ask_no_current_block(db, llm_client, retrieval_service):
     from fastapi import FastAPI
     from httpx import ASGITransport, AsyncClient
 
@@ -218,6 +235,7 @@ async def test_ask_no_current_block(db, llm_client):
     app.include_router(ask_router)
     app.dependency_overrides[get_db] = lambda: db
     app.state.llm = llm_client
+    app.state.retrieval = retrieval_service
 
     doc = Document(filename="test.pdf", page_count=1, block_count=1)
     save_document(db.conn, doc)

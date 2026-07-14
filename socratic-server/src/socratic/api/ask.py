@@ -1,3 +1,14 @@
+"""Endpoint de preguntas sobre el bloque actual de lectura.
+
+Construye un contexto ampliado con:
+1. System prompt
+2. Bloque actual
+3. Dos bloques anteriores
+4. Dos bloques siguientes
+5. Fragmentos relevantes recuperados (txtai)
+6. Historial reciente
+7. Pregunta del usuario
+"""
 from __future__ import annotations
 
 from typing import Annotated, Any, List
@@ -7,10 +18,10 @@ from pydantic import BaseModel, Field
 
 from socratic.domain.models import ContentBlock, Message, Study
 from socratic.llm.base import LLMClient
+from socratic.retrieval import RetrievalService
 from socratic.storage.database import (
     DB,
     get_content_block,
-    get_content_blocks,
     get_messages_for_study,
     get_study,
     save_message,
@@ -35,8 +46,13 @@ def get_llm(request: Request) -> LLMClient:
     return request.app.state.llm
 
 
+def get_retrieval(request: Request) -> RetrievalService:
+    return request.app.state.retrieval
+
+
 DBDep = Annotated[DB, Depends(get_db)]
 LLMDep = Annotated[LLMClient, Depends(get_llm)]
+RetrievalDep = Annotated[RetrievalService, Depends(get_retrieval)]
 
 
 class AskRequest(BaseModel):
@@ -49,18 +65,54 @@ class AskResponse(BaseModel):
     message_id: str
 
 
+def _build_prompt(
+    context_messages: list[dict[str, str]],
+    retrieved_blocks: list[ContentBlock],
+    limit_chars: int = 2000,
+) -> list[dict[str, str]]:
+    """Añade bloques recuperados al contexto con límite de tamaño."""
+    if not retrieved_blocks:
+        return context_messages
+
+    sections: list[str] = []
+    total = 0
+    for i, block in enumerate(retrieved_blocks, 1):
+        page_info = f"p.{block.page_number}" if block.page_number else ""
+        ordinal_info = f"ordinal {block.ordinal}" if block.ordinal else ""
+        header_parts = [p for p in [page_info, ordinal_info] if p]
+        header = ", ".join(header_parts) if header_parts else str(i)
+        section = f"[{header}]\n{block.text}"
+        if total + len(section) > limit_chars:
+            break
+        sections.append(section)
+        total += len(section)
+
+    if sections:
+        context_messages.append({
+            "role": "user",
+            "content": "\n\n".join(sections),
+        })
+        context_messages.append({
+            "role": "assistant",
+            "content": "He revisado estos fragmentos adicionales del documento.",
+        })
+
+    return context_messages
+
+
 @router.post("/{study_id}/ask", response_model=AskResponse, status_code=status.HTTP_201_CREATED)
 def ask(
     study_id: str,
     body: AskRequest,
     db: DBDep,
     llm: LLMDep,
+    retrieval: RetrievalDep,
 ) -> Any:
     """Enviar una pregunta sobre el bloque actual de lectura.
 
-    El servidor compone un contexto mínimo con: instrucciones del sistema,
-    bloque actual, dos bloques anteriores y las dos conversaciones más
-    recientes. Guarda la pregunta y la respuesta en el historial del estudio.
+    El servidor compone un contexto ampliado con: instrucciones del sistema,
+    bloque actual, bloques anteriores y siguientes, fragmentos relevantes
+    recuperados mediante txtai, historial reciente y la pregunta.
     El bloque actual no cambia tras la respuesta.
     """
     study = get_study(db.conn, study_id)
@@ -83,25 +135,20 @@ def ask(
             detail=f"Bloque {study.current_block_id} no encontrado",
         )
 
-    all_blocks = get_content_blocks(db.conn, study.document_id)
-    block_indices = {b.id: i for i, b in enumerate(all_blocks)}
-    current_index = block_indices.get(current_block.id, 0)
+    # Construir contexto combinado (local + recuperado)
+    context = retrieval.retrieve_context(study, current_block, body.question)
 
-    previous_blocks = []
-    start = max(0, current_index - 2)
-    for i in range(start, current_index):
-        previous_blocks.append(all_blocks[i])
-
-    messages = get_messages_for_study(db.conn, study_id)
-    recent_messages = messages[-4:]
-
+    # Construir mensajes para el LLM
     context_messages: list[dict[str, str]] = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"Texto actual:\n\n{current_block.text}"},
         {"role": "assistant", "content": "He leído el bloque. ¿En qué puedo ayudarte?"},
     ]
 
-    for block in previous_blocks:
+    # Bloques anteriores (excluyendo el actual)
+    local_prev = [b for b in context.local_blocks if b.id != current_block.id
+                  and b.ordinal < current_block.ordinal]
+    for block in local_prev:
         context_messages.append(
             {"role": "user", "content": f"Texto anterior:\n\n{block.text}"}
         )
@@ -109,6 +156,33 @@ def ask(
             {"role": "assistant", "content": "He leído ese bloque también."}
         )
 
+    # Bloques siguientes (excluyendo el actual)
+    local_next = [b for b in context.local_blocks if b.id != current_block.id
+                  and b.ordinal > current_block.ordinal]
+    for block in local_next:
+        context_messages.append(
+            {"role": "user", "content": f"Texto siguiente:\n\n{block.text}"}
+        )
+        context_messages.append(
+            {"role": "assistant", "content": "He leído ese bloque también."}
+        )
+
+    # Bloques recuperados (txtai)
+    retrieved_as_blocks = [
+        ContentBlock(
+            id=rb.block_id,
+            document_id=rb.document_id,
+            ordinal=rb.ordinal,
+            text=rb.text,
+            page_number=rb.page_number,
+        )
+        for rb in context.retrieved_blocks
+    ]
+    context_messages = _build_prompt(context_messages, retrieved_as_blocks)
+
+    # Historial reciente
+    messages = get_messages_for_study(db.conn, study_id)
+    recent_messages = messages[-4:]
     for m in recent_messages:
         context_messages.append({"role": m.role, "content": m.content})
 

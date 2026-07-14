@@ -339,6 +339,48 @@ def cmd_ask(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- Retrieval ---
+
+
+def cmd_reindex(args: argparse.Namespace) -> int:
+    with _client(args) as c:
+        if args.document_id:
+            try:
+                data = c.reindex_document(args.document_id)
+                print(f"Documento {args.document_id}: {data['blocks']} bloques indexados")
+            except SocraticAPIError as e:
+                _err(str(e))
+                return 1
+        else:
+            try:
+                docs = c.list_documents()
+                for d in docs:
+                    data = c.reindex_document(d["id"])
+                    print(f"Documento {d['id']}: {data['blocks']} bloques indexados")
+            except SocraticAPIError as e:
+                _err(str(e))
+                return 1
+    return 0
+
+
+def cmd_search_document(args: argparse.Namespace) -> int:
+    with _client(args) as c:
+        try:
+            results = c.search_document(args.document_id, args.query, limit=args.limit)
+        except SocraticAPIError as e:
+            _err(str(e))
+            return 1
+    if not results:
+        print("No se encontraron resultados.")
+        return 0
+    for r in results:
+        print(f"  page={r['page_number']}, ordinal={r['ordinal']}, type={r['block_type']}")
+        print(f"  score={r['score']:.4f}")
+        print(f"  text={r['text'][:200]}")
+        print()
+    return 0
+
+
 # --- Config ---
 
 
@@ -616,6 +658,34 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("study_id")
     p.add_argument("question", help="Pregunta sobre el bloque actual")
     p.set_defaults(func=cmd_ask)
+
+    # reindex
+    p = sub.add_parser(
+        "reindex",
+        help="Indexar documento(s) para recuperación con txtai",
+    )
+    p.add_argument(
+        "document_id",
+        nargs="?",
+        default=None,
+        help="ID del documento (omitir para indexar todos)",
+    )
+    p.set_defaults(func=cmd_reindex)
+
+    # search-document
+    p = sub.add_parser(
+        "search-document",
+        help="Buscar bloques relevantes en un documento indexado (diagnóstico)",
+    )
+    p.add_argument("document_id")
+    p.add_argument("query", help="Consulta de búsqueda")
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=5,
+        help="Número máximo de resultados (default: 5)",
+    )
+    p.set_defaults(func=cmd_search_document)
 
     # inspect-pdf
     add_inspect_pdf_parser(sub)

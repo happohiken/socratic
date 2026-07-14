@@ -61,6 +61,18 @@ class SocraticClient:
     def get_document(self, document_id: str) -> dict:
         return self._request("GET", f"/documents/{document_id}")
 
+    def reindex_document(self, document_id: str) -> dict:
+        return self._request("POST", f"/documents/{document_id}/reindex")
+
+    def search_document(
+        self, document_id: str, query: str, limit: int = 5
+    ) -> list[dict]:
+        return self._request(
+            "POST",
+            f"/documents/{document_id}/search",
+            json={"query": query, "limit": limit},
+        )
+
     # --- Studies ---
 
     def create_study(self, document_id: str) -> dict:

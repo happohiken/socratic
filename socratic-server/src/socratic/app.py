@@ -10,10 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from socratic.api.ask import get_llm, router as ask_router
 from socratic.api.documents import router as documents_router
+from socratic.api.retrieval import router as retrieval_router
 from socratic.api.studies import router as studies_router
 from socratic.config.settings import Settings
 from socratic.llm.base import LLMClient
 from socratic.llm.openai_client import OpenAIClient
+from socratic.retrieval import RetrievalService, TxtaiDocumentRetriever
 from socratic.storage.database import init_db
 
 settings = Settings()
@@ -55,6 +57,15 @@ def create_app(
         timeout=settings.llm_timeout_seconds,
     )
 
+    # Crear y configurar el servicio de recuperación
+    retriever = TxtaiDocumentRetriever(
+        storage_path=settings.retrieval_storage,
+        embedding_model=settings.embedding_model,
+    )
+    retriever.load()
+    retrieval_service = RetrievalService(retriever=retriever, db=db)
+    app.state.retrieval = retrieval_service
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -65,4 +76,5 @@ def create_app(
     app.include_router(documents_router)
     app.include_router(studies_router)
     app.include_router(ask_router)
+    app.include_router(retrieval_router)
     return app

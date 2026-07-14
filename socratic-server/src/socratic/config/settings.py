@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_timeout_seconds: int = 120
 
+    # Retrieval configuration
+    retrieval_storage: Path = Path("data/retrieval")
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    retrieval_limit: int = 5
+    retrieval_context_limit_chars: int = 2000
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         import os
