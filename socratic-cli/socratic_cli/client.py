@@ -52,6 +52,9 @@ class SocraticClient:
                 files={"file": (pdf_path.name, f, "application/pdf")},
             )
 
+    def delete_document(self, document_id: str) -> None:
+        self._request("DELETE", f"/documents/{document_id}")
+
     def list_documents(self) -> list[dict]:
         return self._request("GET", "/documents")
 

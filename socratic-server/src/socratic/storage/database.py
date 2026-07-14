@@ -293,3 +293,13 @@ def get_messages_for_study(
         (study_id,),
     )
     return [_row_to_message(r) for r in cur.fetchall()]
+
+
+def delete_document(conn: sqlite3.Connection, doc_id: str) -> bool:
+    """Eliminar un documento y todos sus asociados (vía CASCADE).
+
+    Devuelve True si se borró algo, False si el documento no existía.
+    """
+    cur = conn.execute("DELETE FROM documents WHERE id=?", (doc_id,))
+    conn.commit()
+    return cur.rowcount > 0

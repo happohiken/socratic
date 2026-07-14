@@ -17,6 +17,7 @@ from socratic.document_processing.extractor import parse_pdf
 from socratic.domain.models import ContentBlock, Document
 from socratic.storage.database import (
     DB,
+    delete_document,
     get_content_block,
     get_content_blocks,
     get_document,
@@ -106,6 +107,19 @@ async def upload_document(file: UploadFile, db: DB = Depends(get_db)):
             for b in blocks
         ],
     )
+
+
+@router.delete("/{document_id}", status_code=204)
+async def delete_document_endpoint(document_id: str, db: DB = Depends(get_db)):
+    doc = get_document(db.conn, document_id)
+    if not doc:
+        raise HTTPException(404, "Documento no encontrado")
+
+    deleted = delete_document(db.conn, document_id)
+    if not deleted:
+        raise HTTPException(500, "Error al eliminar el documento")
+
+    return None
 
 
 @router.get("", response_model=list[DocumentSummary])

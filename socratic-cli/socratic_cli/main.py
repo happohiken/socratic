@@ -91,6 +91,17 @@ def cmd_document(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_delete_document(args: argparse.Namespace) -> int:
+    with _client(args) as c:
+        try:
+            c.delete_document(args.document_id)
+        except SocraticAPIError as e:
+            _err(str(e))
+            return 1
+    print(f"Documento {args.document_id} eliminado.")
+    return 0
+
+
 # --- Estudios ---
 
 
@@ -448,6 +459,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("document_id")
     p.set_defaults(func=cmd_document)
 
+
+    # delete
+    p = sub.add_parser("delete", help="Eliminar un documento y todos sus asociados")
+    p.add_argument("document_id")
+    p.set_defaults(func=cmd_delete_document)
     # create-study
     p = sub.add_parser("create-study", help="Crear un estudio para un documento")
     p.add_argument("document_id")

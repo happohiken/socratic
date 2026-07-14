@@ -90,6 +90,15 @@ Obtiene un documento con sus bloques.
 **Errores**:
 - `404` — Documento no encontrado.
 
+### DELETE /documents/{document_id}
+
+Elimina un documento y todos sus asociados (bloques, estudios, mensajes) mediante cascada.
+
+**Respuesta 204**: Sin contenido.
+
+**Errores**:
+- `404` — Documento no encontrado.
+
 ---
 
 ## Endpoints de Estudios

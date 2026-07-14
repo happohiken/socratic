@@ -63,6 +63,7 @@ Los tests cubren:
 - Obtención y avance de bloques
 - Creación y consulta de mensajes
 - **Reinicio del servidor y recuperación del estado** (documento, bloques, estudio, mensajes)
+- **Eliminación de documentos** ( CASCADE a bloques, estudios y mensajes)
 
 ## Cliente CLI
 
@@ -83,6 +84,7 @@ socratic complete-block <study_id> <block_id>
 socratic message <study_id> "¿Pregunta?" --role user
 socratic messages <study_id>
 socratic ask <study_id> "¿Qué significa este término?"
+socratic delete <document_id>
 
 # Inspeccionar la descomposición de un PDF sin subirlo al servidor
 socratic inspect-pdf ruta/al.pdf [--format json] [--pages 1-5]
@@ -126,6 +128,7 @@ python -m pytest tests/ -v
 | POST | `/documents` | Cargar un PDF. Extrae bloques ordenados y los persiste. |
 | GET | `/documents` | Listar documentos. |
 | GET | `/documents/{id}` | Detalle de un documento y sus bloques. |
+| DELETE | `/documents/{id}` | Eliminar un documento y todos sus asociados (bloques, estudios, mensajes). |
 | POST | `/studies` | Crear estudio para un documento. |
 | GET | `/studies` | Listar estudios. |
 | GET | `/studies/{id}` | Consultar estado de un estudio. |

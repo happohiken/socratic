@@ -66,7 +66,7 @@ Modelos de dominio:
 - `Message`: id, study_id, content_block_id, role, content, created_at
 
 ### `socratic/storage/database.py`
-Conexión SQLite via stdlib `sqlite3` con `check_same_thread=False` para soporte multi-hilo. CRUD para Document, ContentBlock, Study y Message. Tablas: documents, content_blocks, studies, messages.
+Conexión SQLite via stdlib `sqlite3` con `check_same_thread=False` para soporte multi-hilo. CRUD para Document, ContentBlock, Study y Message. Tablas: documents, content_blocks, studies, messages. Eliminación en cascada mediante `ON DELETE CASCADE` en las restricciones foreign key.
 
 ### `socratic/document_processing/extractor.py`
 Parser documental principal. Compartido entre `socratic inspect-pdf` y `POST /documents`. Usa `pdfplumber` para extraer texto con información de fuentes, fusiona líneas en párrafos, detecta y elimina cabeceras/pies repetidos, clasifica nodos (heading, paragraph, list_item) y devuelve un `ParsedDocument` con nodos ordenados por lectura.
@@ -86,6 +86,7 @@ Extracción antigua por líneas con tolerancia Y de 5px. Ya no es usada por la A
 ### `socratic/api/documents.py`
 Endpoints REST:
 - `POST /documents` — Subida y extracción (usa `parse_pdf()` compartido con `inspect-pdf`)
+- `DELETE /documents/{id}` — Eliminación en cascada (documentos, bloques, estudios, mensajes)
 - `GET /documents` — Listado
 - `GET /documents/{id}` — Detalle con bloques
 
