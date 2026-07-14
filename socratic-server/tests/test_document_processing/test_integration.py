@@ -67,7 +67,7 @@ def test_parse_simple_pdf_node_types(simple_pdf: Path):
     types = [n.node_type for n in doc.nodes]
     assert "heading" in types
     assert "paragraph" in types
-    assert "list_item" in types
+    assert "list" in types
 
 
 def test_parse_simple_pdf_page_numbers(simple_pdf: Path):
@@ -99,8 +99,8 @@ def test_parse_simple_pdf_heading_detection(simple_pdf: Path):
 
 def test_parse_simple_pdf_list_detection(simple_pdf: Path):
     doc = parse_pdf(simple_pdf)
-    items = [n for n in doc.nodes if n.node_type == "list_item"]
-    assert len(items) >= 2
+    items = [n for n in doc.nodes if n.node_type == "list"]
+    assert len(items) >= 1
 
 
 def test_parse_tight_pdf_paragraph_merging(tight_pdf: Path):

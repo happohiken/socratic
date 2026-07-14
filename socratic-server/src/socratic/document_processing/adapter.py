@@ -68,7 +68,7 @@ def parsed_to_content_blocks(
             meta["level"] = node.level
 
         block_type = node.node_type
-        if block_type == "list_item":
+        if block_type in ("list_item", "list"):
             block_type = "list"
 
         blocks.append(

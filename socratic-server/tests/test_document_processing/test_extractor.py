@@ -5,6 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "src"))
 
+from socratic.document_processing.classifier import _starts_with_list_prefix
 from socratic.document_processing.extractor import (
     _compute_page_median_gap,
     _join_hyphenated_words,
@@ -245,3 +246,75 @@ class TestHeaderFooterConstants:
 
     def test_min_pages_no_detect_value(self):
         assert MIN_PAGES_NO_DETECT == 5
+
+
+class TestMergeListBoundaries:
+    """Verificar que _merge_lines_into_paragraphs respeta fronteras de listas."""
+
+    def test_list_item_followed_by_paragraph_no_merge(self):
+        """list item seguido de parrafo no debe fusionarse."""
+        lines = [
+            {"text": "- Primer elemento", "font": _font(), "x0": 37, "x1": 174, "top": 80, "bottom": 92},
+            {"text": "Parrafo despues de la lista.", "font": _font(), "x0": 31, "x1": 201, "top": 100, "bottom": 112},
+        ]
+        result = _merge_lines_into_paragraphs(lines, y_threshold=6.0)
+        assert len(result) == 2
+        assert result[0]["text"] == "- Primer elemento"
+        assert result[1]["text"] == "Parrafo despues de la lista."
+
+    def test_paragraph_followed_by_list_item_no_merge(self):
+        """parrafo seguido de list item no debe fusionarse."""
+        lines = [
+            {"text": "Primer parrafo con texto.", "font": _font(), "x0": 31, "x1": 201, "top": 60, "bottom": 72},
+            {"text": "- Primer elemento de lista", "font": _font(), "x0": 37, "x1": 174, "top": 80, "bottom": 92},
+        ]
+        result = _merge_lines_into_paragraphs(lines, y_threshold=6.0)
+        assert len(result) == 2
+        assert result[0]["text"] == "Primer parrafo con texto."
+        assert result[1]["text"] == "- Primer elemento de lista"
+
+    def test_two_list_items_no_merge(self):
+        """dos list items consecutivos no deben fusionarse en esta fase."""
+        lines = [
+            {"text": "- Primer elemento", "font": _font(), "x0": 37, "x1": 174, "top": 80, "bottom": 92},
+            {"text": "- Segundo elemento", "font": _font(), "x0": 37, "x1": 187, "top": 100, "bottom": 112},
+        ]
+        result = _merge_lines_into_paragraphs(lines, y_threshold=6.0)
+        assert len(result) == 2
+        assert result[0]["text"] == "- Primer elemento"
+        assert result[1]["text"] == "- Segundo elemento"
+
+    def test_list_item_in_middle_of_paragraph_no_merge(self):
+        """list item en medio de un parrafo no debe fusionar ni arriba ni abajo."""
+        lines = [
+            {"text": "Parrafo anterior con texto.", "font": _font(), "x0": 31, "x1": 201, "top": 60, "bottom": 72},
+            {"text": "- Elemento de lista", "font": _font(), "x0": 37, "x1": 174, "top": 80, "bottom": 92},
+            {"text": "Parrafo despues de la lista.", "font": _font(), "x0": 31, "x1": 201, "top": 100, "bottom": 112},
+        ]
+        result = _merge_lines_into_paragraphs(lines, y_threshold=6.0)
+        assert len(result) == 3
+        assert result[0]["text"] == "Parrafo anterior con texto."
+        assert result[1]["text"] == "- Elemento de lista"
+        assert result[2]["text"] == "Parrafo despues de la lista."
+
+    def test_list_item_with_bullet_followed_by_paragraph(self):
+        """list item con bullet unicode seguido de parrafo no debe fusionarse."""
+        lines = [
+            {"text": "\u2022 Primer elemento", "font": _font(), "x0": 37, "x1": 174, "top": 80, "bottom": 92},
+            {"text": "Parrafo despues de la lista.", "font": _font(), "x0": 31, "x1": 201, "top": 100, "bottom": 112},
+        ]
+        result = _merge_lines_into_paragraphs(lines, y_threshold=6.0)
+        assert len(result) == 2
+        assert result[0]["text"] == "\u2022 Primer elemento"
+        assert result[1]["text"] == "Parrafo despues de la lista."
+
+    def test_numbered_list_item_followed_by_paragraph(self):
+        """list item numerado seguido de parrafo no debe fusionarse."""
+        lines = [
+            {"text": "1. Primer elemento numerado", "font": _font(), "x0": 37, "x1": 174, "top": 80, "bottom": 92},
+            {"text": "Parrafo despues de la lista.", "font": _font(), "x0": 31, "x1": 201, "top": 100, "bottom": 112},
+        ]
+        result = _merge_lines_into_paragraphs(lines, y_threshold=6.0)
+        assert len(result) == 2
+        assert result[0]["text"] == "1. Primer elemento numerado"
+        assert result[1]["text"] == "Parrafo despues de la lista."

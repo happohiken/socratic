@@ -148,7 +148,7 @@ class TestParsedToContentBlocks:
         parsed = parse_pdf(simple_pdf)
         blocks = parsed_to_content_blocks("doc-1", parsed)
         lists = [b for b in blocks if b.block_type == "list"]
-        assert len(lists) >= 2
+        assert len(lists) >= 1
 
     def test_document_id_set(self, simple_pdf: Path):
         parsed = parse_pdf(simple_pdf)

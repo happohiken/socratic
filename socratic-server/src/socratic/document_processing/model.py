@@ -22,7 +22,7 @@ class FontInfo:
 @dataclass
 class DocumentNode:
     id: int
-    node_type: Literal["heading", "paragraph", "list_item", "unknown"]
+    node_type: Literal["heading", "paragraph", "list", "unknown"]
     text: str
     page_number: int
     ordinal: int
@@ -30,6 +30,14 @@ class DocumentNode:
     parent_id: int | None = None
     bbox: tuple[float, float, float, float] | None = None
     font: FontInfo | None = None
+    list_items: list[ListItem] | None = None
+    is_ordered: bool = False
+
+
+@dataclass
+class ListItem:
+    text: str
+    marker: str
 
 
 @dataclass

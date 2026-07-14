@@ -34,6 +34,9 @@ def _format_node_text(node: Any) -> str:
         parts.append(f" font={node.font.name} size={node.font.size:.1f}")
     if node.bbox:
         parts.append(f" bbox=({node.bbox[0]:.1f},{node.bbox[1]:.1f},{node.bbox[2]:.1f},{node.bbox[3]:.1f})")
+    if node.node_type == "list" and node.list_items:
+        parts.append(f" is_ordered={node.is_ordered}")
+        parts.append(f" items={len(node.list_items)}")
     return "".join(parts) + "\n" + node.text
 
 
@@ -66,6 +69,12 @@ def format_json(doc: ParsedDocument) -> str:
                 "bold": n.font.bold,
                 "italic": n.font.italic,
             } if n.font else None,
+            "list_items": (
+                [{"text": it.text, "marker": it.marker} for it in n.list_items]
+                if n.list_items
+                else None
+            ),
+            "is_ordered": n.is_ordered if n.node_type == "list" else None,
         }
         for n in doc.nodes
     ]

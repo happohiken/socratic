@@ -9,7 +9,11 @@ from typing import Any
 
 import pdfplumber
 
-from socratic.document_processing.classifier import classify_node, _starts_with_list_prefix
+from socratic.document_processing.classifier import (
+    _LIST_PREFIXES,
+    _starts_with_list_prefix,
+    classify_node,
+)
 from socratic.document_processing.model import (
     DocumentNode,
     FontInfo,
@@ -170,6 +174,7 @@ def _merge_lines_into_paragraphs(
     for line in lines:
         if current is None:
             current = dict(line)
+            current["_is_list_item"] = _starts_with_list_prefix(line["text"])
             continue
 
         y_gap = line["top"] - current["bottom"]
@@ -177,14 +182,20 @@ def _merge_lines_into_paragraphs(
             current["font"].name == line["font"].name
             and abs(current["font"].size - line["font"].size) < 0.5
         )
+        next_is_list = _starts_with_list_prefix(line["text"])
 
-        if y_gap <= y_threshold and same_font and not _starts_with_list_prefix(line["text"]):
+        # No fusion si alguna de las dos lineas tiene prefijo de lista:
+        # - list_item + list_item → no fusionar (agrupar despues en fase separada)
+        # - list_item + paragraph → no fusionar
+        # - paragraph + list_item → no fusionar
+        if y_gap <= y_threshold and same_font and not next_is_list and not current.get("_is_list_item", False):
             current["text"] += " " + line["text"]
             current["x1"] = line["x1"]
             current["bottom"] = line["bottom"]
         else:
             merged.append(current)
             current = dict(line)
+            current["_is_list_item"] = next_is_list
 
     if current is not None:
         merged.append(current)
@@ -453,6 +464,132 @@ def _remove_patterns_from_lines(
     return result
 
 
+def _extract_marker(text: str) -> str:
+    """Extraer el marcador (prefijo) de un elemento de lista.
+
+    Ejemplos:
+        "- Elemento" -> "-"
+        "• Elemento" -> "•"
+        "1. Elemento" -> "1."
+        "a) Elemento" -> "a)"
+        "I. Elemento" -> "I."
+    """
+    stripped = text.lstrip()
+    if not stripped:
+        return ""
+
+    # Prefijos Unicode de un solo caracter
+    if stripped[0] in _LIST_PREFIXES:
+        return stripped[0]
+
+    import re
+    # Numerico: "1.", "1)", "1:"
+    m = re.match(r"^(\d+[\.\)\:]\s)", stripped)
+    if m:
+        return m.group(1).rstrip()
+
+    # Alfabetico: "a.", "A)", "a:"
+    m = re.match(r"^([a-zA-Z][\.\)\:]\s)", stripped)
+    if m:
+        return m.group(1).rstrip()
+
+    # Romano: "I.", "X)", "IV."
+    m = re.match(r"^([IVXLC]+[\.\)\:]\s)", stripped.upper())
+    if m:
+        return m.group(1).rstrip()
+
+    return ""
+
+
+def _is_numbered(marker: str) -> bool:
+    """Devuelve True si el marcador indica una lista ordenada."""
+    import re
+    # Strip trailing punctuation that may be part of the marker format
+    clean = marker.rstrip(".): ")
+    if not clean:
+        return False
+    # Numerico
+    if re.match(r"^\d+$", clean):
+        return True
+    # Alfabetico
+    if re.match(r"^[a-zA-Z]+$", clean):
+        return True
+    # Romano
+    if re.match(r"^[IVXLC]+$", clean, re.IGNORECASE):
+        return True
+    return False
+
+
+def _group_consecutive_list_items(nodes: list[DocumentNode]) -> list[DocumentNode]:
+    """Agrupar secuencias consecutivas de list_item en nodos de tipo list.
+
+    Limitacion temporal: una lista que continua en otra pagina queda separada
+    en dos nodos list independientes. El comportamiento ideal (union cross-page)
+    requiere heuristicas adicionales que quedan fuera de esta version.
+    """
+    from socratic.document_processing.model import ListItem
+
+    result: list[DocumentNode] = []
+    i = 0
+
+    while i < len(nodes):
+        node = nodes[i]
+        if node.node_type != "list_item":
+            result.append(node)
+            i += 1
+            continue
+
+        # Recoger todos los list_item consecutivos
+        group: list[DocumentNode] = [node]
+        while i + 1 < len(nodes) and nodes[i + 1].node_type == "list_item":
+            i += 1
+            group.append(nodes[i])
+
+        # Extraer marcadores
+        items = [
+            ListItem(text=n.text, marker=_extract_marker(n.text))
+            for n in group
+        ]
+        is_ordered = all(_is_numbered(it.marker) for it in items)
+
+        # Unir bbox
+        bboxes = [n.bbox for n in group if n.bbox is not None]
+        if bboxes:
+            bbox = (
+                min(b[0] for b in bboxes),
+                min(b[1] for b in bboxes),
+                max(b[2] for b in bboxes),
+                max(b[3] for b in bboxes),
+            )
+        else:
+            bbox = None
+
+        # Texto combinado
+        combined_text = "\n".join(it.text for it in items)
+
+        # Fuente del primer elemento
+        font = group[0].font
+
+        result.append(
+            DocumentNode(
+                id=group[0].id,
+                node_type="list",
+                text=combined_text,
+                page_number=group[0].page_number,
+                ordinal=group[0].ordinal,
+                level=None,
+                parent_id=None,
+                bbox=bbox,
+                font=font,
+                list_items=items,
+                is_ordered=is_ordered,
+            )
+        )
+        i += 1
+
+    return result
+
+
 def _sort_nodes_by_reading_order(nodes: list[DocumentNode]) -> list[DocumentNode]:
     return sorted(
         nodes,
@@ -551,6 +688,7 @@ def parse_pdf(
             doc.title = first_heading.text
 
     nodes = _sort_nodes_by_reading_order(nodes)
+    nodes = _group_consecutive_list_items(nodes)
     for i, n in enumerate(nodes):
         n.ordinal = i + 1
 
