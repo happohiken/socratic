@@ -4,16 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from socratic.domain.models import ContentBlock, Document, Message, Study
+from socratic.services.navigation import NavigationError, NavigationService
 from socratic.storage.database import (
     DB,
-    get_content_block,
     get_document,
     get_messages_for_study,
     get_study,
     list_studies,
     save_message,
     save_study,
-    update_study,
 )
 
 router = APIRouter(prefix="/studies", tags=["studies"])
@@ -23,7 +22,12 @@ def get_db(request: Request) -> DB:
     return request.app.state.db
 
 
+def get_navigation(request: Request) -> NavigationService:
+    return request.app.state.navigation
+
+
 DBDep = Annotated[DB, Depends(get_db)]
+NavigationDep = Annotated[NavigationService, Depends(get_navigation)]
 
 
 class StudyCreate(BaseModel):
@@ -140,7 +144,7 @@ def get_study_endpoint(study_id: str, db: DBDep) -> Study:
 
 
 @router.get("/{study_id}/current-block", response_model=BlockResponse)
-def get_current_block(study_id: str, db: DBDep) -> ContentBlock:
+def get_current_block(study_id: str, db: DBDep, nav: NavigationDep) -> ContentBlock:
     """Obtener el bloque actual de lectura.
 
     No avanza la posición. Permite repetir el bloque si es necesario.
@@ -151,16 +155,11 @@ def get_current_block(study_id: str, db: DBDep) -> ContentBlock:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Estudio {study_id} no encontrado",
         )
-    if not study.current_block_id:
+    block = nav.get_current_block(study)
+    if block is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="El estudio no tiene bloque actual",
-        )
-    block = get_content_block(db.conn, study.current_block_id)
-    if not block:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Bloque {study.current_block_id} no encontrado",
         )
     return BlockResponse(
         id=block.id,
@@ -180,6 +179,7 @@ def complete_block(
     study_id: str,
     block_id: str,
     db: DBDep,
+    nav: NavigationDep,
 ) -> Study:
     """Marcar un bloque como completado.
 
@@ -192,35 +192,13 @@ def complete_block(
             detail=f"Estudio {study_id} no encontrado",
         )
 
-    doc = get_document(db.conn, study.document_id)
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Documento {study.document_id} no encontrado",
-        )
-
-    from socratic.storage.database import get_content_blocks
-
-    blocks = get_content_blocks(db.conn, study.document_id)
-    block_ids = [b.id for b in blocks]
-
-    if block_id not in block_ids:
+    try:
+        nav.complete_block(study, block_id)
+    except NavigationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Bloque {block_id} no pertenece al documento",
+            detail=str(exc),
         )
-
-    current_index = block_ids.index(block_id)
-    if current_index < len(block_ids) - 1:
-        next_block_id = block_ids[current_index + 1]
-        study.current_block_id = next_block_id
-    else:
-        study.current_block_id = None
-
-    study.last_completed_block_id = block_id
-    study.touch()
-    update_study(db.conn, study)
-    db.conn.commit()
 
     return StudyResponse(
         id=study.id,
@@ -239,6 +217,7 @@ def complete_block(
 def previous_block(
     study_id: str,
     db: DBDep,
+    nav: NavigationDep,
 ) -> Study:
     """Retroceder al bloque anterior.
 
@@ -252,44 +231,13 @@ def previous_block(
             detail=f"Estudio {study_id} no encontrado",
         )
 
-    doc = get_document(db.conn, study.document_id)
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Documento {study.document_id} no encontrado",
-        )
-
-    from socratic.storage.database import get_content_blocks
-
-    blocks = get_content_blocks(db.conn, study.document_id)
-    block_ids = [b.id for b in blocks]
-
-    if not block_ids:
+    try:
+        nav.previous_block(study)
+    except NavigationError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="El documento no tiene bloques",
+            detail=str(exc),
         )
-
-    # Si current_block_id es None (fin del documento), retroceder desde last_completed
-    if study.current_block_id is None:
-        if study.last_completed_block_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="El estudio no tiene bloques completados para retroceder",
-            )
-        # Volver al último bloque completado
-        study.current_block_id = study.last_completed_block_id
-    else:
-        current_index = block_ids.index(study.current_block_id)
-        if current_index == 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya estás en el primer bloque",
-            )
-        study.current_block_id = block_ids[current_index - 1]
-    study.touch()
-    update_study(db.conn, study)
-    db.conn.commit()
 
     return StudyResponse(
         id=study.id,

@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     retrieval_limit: int = 5
     retrieval_context_limit_chars: int = 2000
 
+    # Orchestrator configuration
+    orchestrator_max_tool_iterations: int = 5
+    orchestrator_history_messages: int = 10
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         import os

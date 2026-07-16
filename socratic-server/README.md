@@ -49,6 +49,7 @@ pytest tests/ -v
 - `GET /studies/{id}/messages` — Obtener historial de mensajes
 - `POST /studies/{id}/messages` — Crear mensaje
 - `POST /studies/{id}/ask` — Pregunta contextual con contexto ampliado
+- `POST /studies/{id}/interact` — Turn conversacional con tool calling (orquestador)
 - `POST /documents/{id}/reindex` — Indexar documento para recuperación (202)
 - `POST /documents/{id}/search` — Buscar bloques relevantes (diagnóstico)
 
@@ -76,20 +77,25 @@ src/socratic/
 ├── api/
 │   ├── documents.py      # Endpoints de documentos
 │   ├── studies.py        # Endpoints de estudios y mensajes
-│   ├── ask.py            # Preguntas contextuales (contexto ampliado)
+│   ├── ask.py            # Preguntas contextuales (contexto ampliado, sin tools)
+│   ├── interact.py       # Turn conversacional con tools (orquestador)
 │   └── retrieval.py      # Indexación y búsqueda de diagnóstico
 ├── config/
 │   └── settings.py       # Configuración de la aplicación
 ├── domain/
 │   └── models.py         # Modelos de dominio
-├── pdf/
-│   └── parser.py         # Parser de PDFs con pdfplumber
 ├── document_processing/  # Parser documental (extractor + adapter)
-├── llm/                  # Interfaz LLM + implementación OpenAI
+├── llm/                  # Interfaz LLM + implementación OpenAI (con tools)
 ├── retrieval/            # Indexación y recuperación documental (txtai)
 │   ├── models.py         # RetrievedBlock, DocumentRetriever, Context
 │   ├── txtai_backend.py  # TxtaiDocumentRetriever
 │   └── service.py        # RetrievalService
+├── services/
+│   └── navigation.py     # NavigationService (obtener/completar/retroceder bloque)
+├── orchestrator/         # Orquestador conversacional (protocolo-agnóstico)
+│   ├── registry.py       # @register_tool + ToolRegistry + esquemas desde anotaciones
+│   ├── tools.py          # 4 tools (dominio + recuperación)
+│   └── orchestrator.py   # Turn + bucle de tool calling + persistencia user/assistant
 └── storage/
     └── database.py       # Acceso a base de datos SQLite
 ```

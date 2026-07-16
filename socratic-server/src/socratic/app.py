@@ -10,12 +10,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from socratic.api.ask import get_llm, router as ask_router
 from socratic.api.documents import router as documents_router
+from socratic.api.interact import router as interact_router
 from socratic.api.retrieval import router as retrieval_router
 from socratic.api.studies import router as studies_router
 from socratic.config.settings import Settings
 from socratic.llm.base import LLMClient
 from socratic.llm.openai_client import OpenAIClient
+from socratic.orchestrator import Orchestrator
 from socratic.retrieval import RetrievalService, TxtaiDocumentRetriever
+from socratic.services.navigation import NavigationService
 from socratic.storage.database import init_db
 
 settings = Settings()
@@ -66,6 +69,19 @@ def create_app(
     retrieval_service = RetrievalService(retriever=retriever, db=db)
     app.state.retrieval = retrieval_service
 
+    # Servicio de navegación compartido por REST y orquestador
+    app.state.navigation = NavigationService(db)
+
+    # Orquestador conversacional (independiente del protocolo)
+    app.state.orchestrator = Orchestrator(
+        db=db,
+        llm=app.state.llm,
+        retrieval=retrieval_service,
+        navigation=app.state.navigation,
+        max_tool_iterations=settings.orchestrator_max_tool_iterations,
+        history_messages=settings.orchestrator_history_messages,
+    )
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -76,5 +92,6 @@ def create_app(
     app.include_router(documents_router)
     app.include_router(studies_router)
     app.include_router(ask_router)
+    app.include_router(interact_router)
     app.include_router(retrieval_router)
     return app

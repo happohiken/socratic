@@ -27,11 +27,14 @@ def db(tmp_path):
 async def client(db):
     from fastapi import FastAPI
 
+    from socratic.services.navigation import NavigationService
+
     app = FastAPI()
     app.include_router(documents_router)
     app.include_router(studies_router)
     app.dependency_overrides[get_db] = lambda: db
     app.dependency_overrides[get_db_studies] = lambda: db
+    app.state.navigation = NavigationService(db)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:

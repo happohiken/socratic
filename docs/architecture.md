@@ -13,9 +13,6 @@ socratic-server/
 │   ├── storage/             # Capa de persistencia
 │   │   ├── database.py      # Conexión SQLite, CRUD
 │   │   └── __init__.py
-│   ├── pdf/                 # Procesamiento legacy (pendiente de eliminar)
-│   │   ├── parser.py        # Extracción antigua por líneas -- ya no usada por la API
-│   │   └── __init__.py
 │   ├── document_processing/ # Parser documental compartido
 │   │   ├── extractor.py     # parse_pdf() -- fusión de líneas, detección cabeceras/pies
 │   │   ├── adapter.py       # ParsedDocument -> Document + ContentBlock
@@ -23,7 +20,7 @@ socratic-server/
 │   │   ├── formatters.py    # Formato texto/JSON para inspect-pdf
 │   │   └── __init__.py
 │   ├── llm/                 # Interfaz y cliente LLM
-│   │   ├── base.py          # LLMClient (Protocol)
+│   │   ├── base.py          # LLMClient (Protocol), LLMResponse, ToolCall
 │   │   ├── openai_client.py # OpenAIClient (implementación OpenAI-compatible)
 │   │   └── __init__.py
 │   ├── retrieval/           # Indexación y recuperación documental (txtai)
@@ -31,10 +28,19 @@ socratic-server/
 │   │   ├── txtai_backend.py # TxtaiDocumentRetriever
 │   │   ├── service.py       # RetrievalService
 │   │   └── __init__.py
+│   ├── services/            # Servicios de aplicación compartidos por REST y tools
+│   │   ├── navigation.py    # NavigationService (obtener/completar/retroceder bloque)
+│   │   └── __init__.py
+│   ├── orchestrator/        # Orquestador conversacional (protocolo-agnóstico)
+│   │   ├── registry.py      # @register_tool + ToolRegistry + esquemas desde anotaciones
+│   │   ├── tools.py         # 4 tools: get/complete/previous_block + retrieve_document_context
+│   │   ├── orchestrator.py  # Turn + bucle de tool calling + persistencia user/assistant
+│   │   └── __init__.py
 │   ├── api/                 # Endpoints REST
 │   │   ├── documents.py     # POST/GET/DELETE /documents
 │   │   ├── studies.py       # Endpoints de estudios y mensajes
-│   │   ├── ask.py           # POST /studies/{id}/ask (pregunta contextual)
+│   │   ├── ask.py           # POST /studies/{id}/ask (pregunta contextual, sin tools)
+│   │   ├── interact.py      # POST /studies/{id}/interact (Turn conversacional con tools)
 │   │   ├── retrieval.py     # POST /documents/{id}/reindex y /search
 │   │   └── __init__.py
 │   ├── config/              # Configuración
@@ -47,9 +53,13 @@ socratic-server/
 │   ├── test_document.py     # Tests de documentos
 │   ├── test_study.py        # Tests de estudios y mensajes
 │   ├── test_ask.py          # Tests del endpoint ask
+│   ├── test_interact.py     # Tests del endpoint interact (orquestador)
+│   ├── test_orchestrator.py # Tests del bucle de Turn del orquestador
+│   ├── test_orchestrator_tools.py  # Tests de las 4 tools
+│   ├── test_registry.py     # Tests del registro de tools
 │   ├── test_retrieval.py    # Tests de indexación y recuperación
 │   ├── test_persistence.py  # Tests de reinicio y recuperación persistente
-│   ├── test_llm.py          # Tests del cliente LLM (stub)
+│   ├── test_llm.py          # StubLLM + ScriptedLLM para tests
 │   └── __init__.py
 ├── data/                    # Base de datos SQLite (socratic.db) + índice vectorial
 ├── pyproject.toml           # Dependencias y configuración de paquete
@@ -70,7 +80,7 @@ El paquete vive dentro de `src/` (estándar en proyectos Python profesionales):
 Entry point. Crea la app global con `create_app(settings.storage_path)` y arranca uvicorn. No contiene lógica; delega en `socratic.app.create_app`.
 
 ### `socratic/app.py`
-Factory `create_app(storage_path) -> FastAPI`. Inicializa la BD al construir la app (para que `app.state.db` esté disponible sin depender del lifespan startup, útil en tests con ASGITransport) y la cierra en el shutdown. Crea `TxtaiDocumentRetriever` y `RetrievalService` en `app.state.retrieval`. Permite a los tests simular reinicios creando apps nuevas sobre la misma BD.
+Factory `create_app(storage_path) -> FastAPI`. Inicializa la BD al construir la app (para que `app.state.db` esté disponible sin depender del lifespan startup, útil en tests con ASGITransport) y la cierra en el shutdown. Crea `TxtaiDocumentRetriever` y `RetrievalService` en `app.state.retrieval`, `NavigationService` en `app.state.navigation` y `Orchestrator` en `app.state.orchestrator`. Permite a los tests simular reinicios creando apps nuevas sobre la misma BD.
 
 ### `socratic/domain/models.py`
 Modelos de dominio:
@@ -94,14 +104,15 @@ Clasificación de nodos basada en fuente y texto: headings (bold), list items (p
 ### `socratic/document_processing/formatters.py`
 Formateo de `ParsedDocument` a texto legible o JSON para `inspect-pdf`.
 
-### `socratic/pdf/parser.py` (legacy)
-Extracción antigua por líneas con tolerancia Y de 5px. Ya no es usada por la API. Pendiente de eliminación.
-
 ### `socratic/llm/base.py`
-Protocolo `LLMClient` con un método `complete(messages) -> str`. Abstracción mínima que permite cambiar de proveedor sin tocar la lógica de dominio.
+Protocolo `LLMClient` con dos métodos:
+- `complete(messages) -> str` — completado simple sin tools (usado por `/ask`).
+- `complete_with_tools(messages, tools, tool_choice) -> LLMResponse` — completado
+  con tools; devuelve `LLMResponse` con `content` y `tool_calls` (lista de
+  `ToolCall(id, name, arguments_json)`).
 
 ### `socratic/llm/openai_client.py`
-Implementación `OpenAIClient` usando el SDK oficial de OpenAI. Compatible con cualquier API OpenAI-compatible (LiteLLM, Ollama, vLLM, etc.).
+Implementación `OpenAIClient` usando el SDK oficial de OpenAI. Compatible con cualquier API OpenAI-compatible (LiteLLM, Ollama, vLLM, etc.). Implementa ambos métodos del protocolo.
 
 ### `socratic/retrieval/models.py`
 Modelos de recuperación:
@@ -117,6 +128,19 @@ Servicio de aplicación `RetrievalService` que centraliza la lógica de recupera
 - `retrieve_context(study, current_block, question)`: combina bloques locales (actual + 2 anteriores + 2 siguientes) con recuperados (deduplicados)
 - `reindex_document(document_id)`: reconstruye el índice de un documento
 - `search(document_id, query, limit)`: búsqueda de diagnóstico
+
+### `socratic/services/navigation.py`
+`NavigationService` extraído de la lógica que antes vivía inline en `api/studies.py`. Centraliza las operaciones de navegación de lectura (obtener, completar y retroceder bloque) para que sean reutilizadas **tanto por los endpoints REST como por las tools del orquestador**, evitando duplicar lógica y garantizando que las tools no toquen la persistencia directamente. Persiste los cambios de estado del estudio en cada llamada.
+
+### `socratic/orchestrator/`
+Orquestador conversacional basado en tool calling con un único LLM por Turn. Independiente del protocolo (no conoce REST, HTTP ni FastAPI); recibe objetos de dominio y devuelve la respuesta del asistente. Tres módulos:
+
+- **`registry.py`**: mecanismo único de registro de tools. El decorador `@register_tool(name, description)` registra una función en un `ToolRegistry` central. El esquema de argumentos se deriva de las anotaciones de tipo (excluyendo el parámetro `context`), la validación se realiza con Pydantic en runtime, y el resultado se serializa a JSON (`dict` tal cual, modelo Pydantic con `model_dump()`, `str` envuelto en `{"text": ...}`).
+- **`tools.py`**: implementaciones de las 4 tools iniciales, distribuidas en dos categorías semánticas que comparten el mismo mecanismo técnico:
+  - **Tools de dominio** (delegan en `NavigationService`): `get_current_block()`, `complete_current_block()`, `previous_block()`.
+  - **Tools de recuperación** (delegan en `RetrievalService` sin modificar estado): `retrieve_document_context(query)`.
+  Todas reciben un `TurnContext` (study, current_block, db, retrieval, navigation) inyectado por el orquestador, no visible para el LLM, y devuelven **datos estructurados** (nunca narrativa al usuario).
+- **`orchestrator.py`**: fachada `Orchestrator`. Construye el contexto inicial del `Turn` (system prompt + estado del estudio + bloque actual + historial reciente + entrada del usuario), ejecuta el bucle de tool calling, inyecta resultados como mensajes `tool`, persiste únicamente los mensajes `user`/`assistant` finales (no los tool calls) y devuelve un `TurnResult`. Aplica límites configurables: máximo de iteraciones y detección de bucle infinito (misma tool con mismos argumentos repetida sin progreso).
 
 ### `socratic/api/documents.py`
 Endpoints REST:
@@ -146,7 +170,10 @@ Endpoint `POST /studies/{id}/ask` que envía una pregunta al LLM. Construye un c
 6. Historial reciente (últimas 4 mensagens)
 7. Pregunta del usuario
 
-La respuesta se guarda en el historial sin avanzar la posición de lectura.
+La respuesta se guarda en el historial sin avanzar la posición de lectura. Se mantiene durante la transición al orquestador conversacional para no romper la CLI textual existente.
+
+### `socratic/api/interact.py`
+Endpoint `POST /studies/{id}/interact` que inicia un Turn conversacional. Es una capa fina HTTP ↔ orquestador: valida la entrada, obtiene el estudio y delega en `app.state.orchestrator.interact(study, user_input)`. Toda la lógica de tool calling, composición de contexto y persistencia vive en el orquestador (independiente del protocolo).
 
 ### `socratic/api/retrieval.py`
 Endpoints de recuperación documental:
@@ -176,6 +203,10 @@ Configuración de la aplicación, externalizada mediante variables de entorno co
 - `embedding_model`: modelo de embeddings (default: `sentence-transformers/all-MiniLM-L6-v2`)
 - `retrieval_limit`: máx. resultados por búsqueda (default: `5`)
 - `retrieval_context_limit_chars`: límite de contexto recuperado en caracteres (default: `2000`)
+
+**Orquestador:**
+- `orchestrator_max_tool_iterations`: máximo de iteraciones del bucle de tool calling por Turn (default: `5`)
+- `orchestrator_history_messages`: número de mensajes de historial reciente incluidos en el contexto (default: `10`)
 
 Se puede importar la configuración de OpenCode con:
 ` socratic config import-opencode --provider <nombre> --model <nombre> --export-shell`

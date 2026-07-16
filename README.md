@@ -9,7 +9,8 @@ El sistema está formado por:
 
 ## Flujo básico
 
-PDF → procesamiento → lectura de bloques → pregunta contextual → respuesta → reanudación
+- **Lectura guiada**: PDF → procesamiento → lectura de bloques → pregunta contextual → respuesta → reanudación.
+- **Conversacional**: el usuario habla con Socratic en lenguaje natural y un orquestador con un único LLM por Turn decide qué tools invocar (continuar, repetir, retroceder, recuperar contexto) para componer la respuesta. La recuperación documental (RAG) se ejecuta solo cuando el LLM lo solicita.
 
 ## Recuperación documental
 
@@ -80,6 +81,8 @@ Los tests cubren:
 - Creación y consulta de mensajes
 - **Reinicio del servidor y recuperación del estado** (documento, bloques, estudio, mensajes)
 - **Eliminación de documentos** ( CASCADE a bloques, estudios y mensajes)
+- **Orquestador conversacional**: registro de tools, bucle de Turn, detección de bucle infinito, persistencia de user/assistant (no tool calls)
+- **Endpoint `/interact`**: Turn conversacional con tools de dominio y recuperación
 
 ## Cliente CLI
 
@@ -145,6 +148,13 @@ La salida de `--print-env` puede contener secretos (API key). No la guardes en e
 | `SOCRATIC_RETRIEVAL_LIMIT` | Máx. resultados por búsqueda | `5` |
 | `SOCRATIC_RETRIEVAL_CONTEXT_LIMIT_CHARS` | Límite de contexto recuperado | `2000` |
 
+### Configuración del orquestador
+
+| Variable | Descripción | Default |
+|----------|-------------|---------|
+| `SOCRATIC_ORCHESTRATOR_MAX_TOOL_ITERATIONS` | Máx. iteraciones del bucle de tool calling por Turn | `5` |
+| `SOCRATIC_ORCHESTRATOR_HISTORY_MESSAGES` | Mensajes de historial reciente incluidos en el contexto | `10` |
+
 El modelo se descarga la primera vez que se usa y se cachea.
 El directorio `data/retrieval/` se excluye de Git.
 
@@ -171,6 +181,7 @@ python -m pytest tests/ -v
 | GET | `/studies/{id}/messages` | Obtener historial de mensajes. |
 | POST | `/studies/{id}/messages` | Crear mensaje en el estudio. |
 | POST | `/studies/{id}/ask` | Enviar pregunta al LLM sobre el bloque actual. Devuelve respuesta y guarda mensaje. |
+| POST | `/studies/{id}/interact` | Iniciar un Turn conversacional. El orquestador decide qué tools invocar y compone la respuesta final. |
 | POST | `/documents/{id}/reindex` | Indexar un documento para recuperación vectorial (202 Accepted). |
 | POST | `/documents/{id}/search` | Buscar bloques relevantes en un documento indexado (diagnóstico). |
 
@@ -182,21 +193,27 @@ socratic-server/
 │   ├── app.py               # Factory create_app(storage_path)
 │   ├── domain/              # Modelos (Document, ContentBlock, Study, Message)
 │   ├── storage/             # Persistencia SQLite
-│   ├── pdf/                 # Extracción legacy (pdfplumber) -- pendiente de eliminar
 │   ├── document_processing/ # Parser documental compartido (extractor + adapter)
-│   ├── llm/                 # Interfaz LLM + implementación OpenAI
+│   ├── llm/                 # Interfaz LLM + implementación OpenAI (con tools)
 │   ├── retrieval/           # Indexación y recuperación documental (txtai)
 │   │   ├── models.py        # RetrievedBlock, DocumentRetriever, Context
 │   │   ├── txtai_backend.py # TxtaiDocumentRetriever
 │   │   └── service.py       # RetrievalService
+│   ├── services/            # Servicios de aplicación compartidos por REST y tools
+│   │   └── navigation.py    # NavigationService (obtener/completar/retroceder bloque)
+│   ├── orchestrator/        # Orquestador conversacional (protocolo-agnóstico)
+│   │   ├── registry.py      # @register_tool + ToolRegistry + esquemas desde anotaciones
+│   │   ├── tools.py         # 4 tools: dominio (get/complete/previous_block) + recuperación
+│   │   └── orchestrator.py  # Turn + bucle de tool calling + persistencia user/assistant
 │   ├── api/                 # Endpoints REST
 │   │   ├── documents.py     # Documentos
 │   │   ├── studies.py       # Estudios y mensajes
-│   │   ├── ask.py           # Preguntas contextuales
+│   │   ├── ask.py           # Preguntas contextuales (sin tools)
+│   │   ├── interact.py      # Turn conversacional con tools
 │   │   └── retrieval.py     # Reindex y búsqueda de diagnóstico
 │   └── config/              # Configuración
 ├── main.py                  # Entry point FastAPI
-├── tests/                   # Tests (document, study, persistence, retrieval)
+├── tests/                   # Tests (document, study, persistence, retrieval, orchestrator)
 ├── data/                    # Base de datos SQLite + índice vectorial
 └── pyproject.toml           # Dependencias y configuración
 ```
@@ -210,6 +227,8 @@ Hito 4 completado: pregunta contextual al LLM — el servidor compone un context
 Hito 5 completado: validación del flujo completo — la CLI ejecuta el flujo extremo a extremo con un PDF real: cargar PDF → crear estudio → leer bloques → hacer pregunta contextual → recibir respuesta → continuar lectura → cerrar y reiniciar → recuperar posición.
 
 Recuperación documental: módulo `socratic/retrieval/` con indexación vectorial (txtai + sentence-transformers). El contexto de `POST /studies/{id}/ask` incluye ahora 2 bloques anteriores, 2 siguientes y fragmentos recuperados del documento completo.
+
+Orquestador conversacional: módulo `socratic/orchestrator/` con tool calling y un único LLM por Turn. El endpoint `POST /studies/{id}/interact` permite al usuario hablar en lenguaje natural; el LLM decide qué tools invocar (continuar, repetir, retroceder, recuperar contexto) y compone la respuesta final. Solo se persisten los mensajes user/assistant; los tool calls viven en memoria durante el Turn. Plan detallado en [docs/conversational-orchestrator-plan.md](docs/conversational-orchestrator-plan.md).
 
 Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
 Contexto del producto: [docs/product-context.md](docs/product-context.md)

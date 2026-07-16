@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
 
 from openai import OpenAI
 
-from socratic.llm.base import LLMClient
+from socratic.llm.base import LLMClient, LLMResponse, ToolCall
 
 
 class OpenAIClient(LLMClient):
@@ -44,3 +45,37 @@ class OpenAIClient(LLMClient):
         )
         response = self._synced_client.chat.completions.create(**params)
         return response.choices[0].message.content or ""
+
+    def complete_with_tools(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        *,
+        tool_choice: str | None = None,
+        **kwargs: Any,
+    ) -> LLMResponse:
+        params: dict[str, Any] = dict(
+            model=kwargs.get("model", self._model),
+            messages=messages,
+            temperature=kwargs.get("temperature", self._temperature),
+        )
+        if tools:
+            params["tools"] = tools
+            if tool_choice is not None:
+                params["tool_choice"] = tool_choice
+
+        response = self._synced_client.chat.completions.create(**params)
+        message = response.choices[0].message
+
+        tool_calls: list[ToolCall] = []
+        for tc in message.tool_calls or []:
+            arguments = tc.function.arguments or "{}"
+            tool_calls.append(
+                ToolCall(
+                    id=tc.id,
+                    name=tc.function.name,
+                    arguments_json=arguments,
+                )
+            )
+
+        return LLMResponse(content=message.content or "", tool_calls=tool_calls)

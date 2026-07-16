@@ -299,6 +299,48 @@ Envía una pregunta sobre el bloque actual de lectura. El servidor compone un co
 
 ---
 
+## Interacción conversacional
+
+### POST /studies/{study_id}/interact
+
+Inicia un Turn conversacional. El orquestador decide qué tools invocar
+para satisfacer la intención del usuario (continuar, repetir, retroceder,
+preguntar) y compone la respuesta final con un único LLM por Turn.
+
+Las tools disponibles son:
+- `get_current_block()` — devuelve el bloque actual sin modificar el estado.
+- `complete_current_block()` — marca el bloque actual como completado y avanza.
+- `previous_block()` — retrocede al bloque anterior.
+- `retrieve_document_context(query)` — recupera fragmentos documentales
+  relevantes para la consulta (sin modificar el estado).
+
+Solo se persisten los mensajes `user` y `assistant` finales; los tool
+calls viven en memoria durante el Turn. El RAG se ejecuta solo si el
+LLM lo solicita mediante `retrieve_document_context`.
+
+**Cuerpo de la solicitud**:
+
+```json
+{
+  "input": "explíca esto y luego continúa"
+}
+```
+
+**Respuesta 201**:
+
+```json
+{
+  "answer": "Respuesta final del asistente",
+  "study_id": "uuid",
+  "message_id": "uuid"
+}
+```
+
+**Errores**:
+- `404` — Estudio no encontrado.
+
+---
+
 ## Recuperación documental
 
 ### POST /documents/{document_id}/reindex
