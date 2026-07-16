@@ -131,8 +131,11 @@ socratic config import-opencode --provider zcube-local --model qwen3.6-35b-a3b -
 eval "$(socratic config import-opencode --provider zcube-local --model qwen3.6-35b-a3b --export-shell)"
 
 # Arrancar el servidor con las variables exportadas
-socratic-server
+cd socratic-server && python -m main
 ```
+
+> El comando de arranque es `python -m main` desde `socratic-server/`.
+> No existe un comando `socratic-server` instalable.
 
 Las variables que se generan son: `SOCRATIC_LLM_PROVIDER`, `SOCRATIC_LLM_BASE_URL`,
 `SOCRATIC_LLM_MODEL`, `SOCRATIC_LLM_API_KEY`, `SOCRATIC_LLM_TIMEOUT_SECONDS`.
@@ -228,10 +231,34 @@ Hito 5 completado: validación del flujo completo — la CLI ejecuta el flujo ex
 
 Recuperación documental: módulo `socratic/retrieval/` con indexación vectorial (txtai + sentence-transformers). El contexto de `POST /studies/{id}/ask` incluye ahora 2 bloques anteriores, 2 siguientes y fragmentos recuperados del documento completo.
 
-Orquestador conversacional: módulo `socratic/orchestrator/` con tool calling y un único LLM por Turn. El endpoint `POST /studies/{id}/interact` permite al usuario hablar en lenguaje natural; el LLM decide qué tools invocar (continuar, repetir, retroceder, recuperar contexto) y compone la respuesta final. Solo se persisten los mensajes user/assistant; los tool calls viven en memoria durante el Turn. Plan detallado en [docs/conversational-orchestrator-plan.md](docs/conversational-orchestrator-plan.md).
+Orquestador conversacional: módulo `socratic/orchestrator/` con tool calling y un único LLM por Turn. El endpoint `POST /studies/{id}/interact` permite al usuario hablar en lenguaje natural; el LLM decide qué tools invocar (continuar, repetir, retroceder, recuperar contexto) y compone la respuesta final. Solo se persisten los mensajes user/assistant; los tool calls viven en memoria durante el Turn.
 
-Plan completo: [docs/implementation-plan.md](docs/implementation-plan.md)
-Contexto del producto: [docs/product-context.md](docs/product-context.md)
-Metodología de documentación: [docs/documentation-methodology.md](docs/documentation-methodology.md)
-API pública: [docs/api.md](docs/api.md)
-Arquitectura del servidor: [docs/architecture.md](docs/architecture.md)
+## Documentación
+
+La documentación se organiza en tres capas autosuficientes:
+
+- **Para usuarios** (`docs/user/`): instalación, configuración, flujos
+  de uso y resolución de problemas.
+  - [Puesta en marcha](docs/user/getting-started.md)
+  - [Referencia de comandos CLI](docs/user/cli-reference.md)
+  - [Configuración](docs/user/configuration.md)
+  - [Flujos típicos](docs/user/workflows.md)
+  - [Resolución de problemas](docs/user/troubleshooting.md)
+- **Para desarrolladores** (`docs/development/`): arquitectura, modelo
+  de dominio, API, orquestador, RAG, decisiones y hoja de ruta.
+  - [Puesta en marcha](docs/development/getting-started.md)
+  - [Contexto del producto](docs/development/product-context.md)
+  - [Arquitectura del servidor](docs/development/architecture.md)
+  - [Dominio y persistencia](docs/development/domain-and-persistence.md)
+  - [Procesamiento de PDFs](docs/development/pdf-processing.md)
+  - [API pública](docs/development/api.md)
+  - [Orquestador conversacional](docs/development/orchestrator.md)
+  - [Recuperación documental](docs/development/retrieval.md)
+  - [Configuración](docs/development/config.md)
+  - [Decisiones arquitectónicas](docs/development/decisions.md)
+  - [Hoja de ruta](docs/development/roadmap.md)
+- **Para agentes de coding** (`docs/agent/`): compacta y modular, para
+  cargar bajo demanda.
+  - [Índice para agentes](docs/agent/README.md)
+
+Metodología de documentación: [docs/documentation-methodology.md](docs/documentation-methodology.md).

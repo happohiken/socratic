@@ -1,10 +1,6 @@
 {
   "framework_version": "0.1.0",
-  "installed_at": "2026-07-12T06:14:56.426237+00:00",
-  "documentation": {
-    "last_reviewed_commit": "dba8a2e",
-    "last_reviewed_at": "2026-07-16T04:58:05.387221+00:00"
-  },
+  "installed_at": "2026-07-16T09:29:01.990153+00:00",
   "source": "/home/david/Developer/agentic-repo-framework",
   "managed_core_skills": [
     "commit-work",
@@ -13,13 +9,13 @@
   ],
   "managed_files": {
     ".agentic/skills/commit-work/SKILL.md": {
-      "sha256": "e52201d6081a9a2960ba544b1ae45000cae931925ddea82c51e66dbb95966b4a"
+      "sha256": "1c2f39803f79743efd36b7fb42114f56379faa995208ac0d9aa376a2e92bb8a8"
     },
     ".agentic/skills/docs-init/SKILL.md": {
-      "sha256": "b8719b4b4c5d1100e45b3dcbcc0abd7d5e63e2ad68c66d3fc8d182fa4c7df6c1"
+      "sha256": "efea6f81c51868026c2167996daf2f308ea4a6191054426c69d8e6e946f82137"
     },
     ".agentic/skills/docs-update/SKILL.md": {
-      "sha256": "b1cfd301e85ac7ecb93a5eabcd1ee288912ed7f2f104826113e4be6931666dfd"
+      "sha256": "648218cc5d780ae0a510efedb76f5c6171ec3f567ed7feb42cdeb2f426c7f026"
     },
     ".claude/skills/commit-work/SKILL.md": {
       "sha256": "4eb8db12d90a1ca36f1654b79a961213da3df224ba8cf78a256630a94467c963"
@@ -40,7 +36,11 @@
       "sha256": "001204a552d0365c62b2b7ed0bc6908d5b1162daf6fa333382f4026dc3679acb"
     },
     "docs/documentation-methodology.md": {
-      "sha256": "bccb71950b9ae5da13b9620a42ebbbf8d4e44ffb58a05977ef571142966ccea3"
+      "sha256": "5435c2b30d2fc33b1de1aff2cdccc32e91d71c5559ee394bdca8f57b875f9b1d"
     }
+  },
+  "documentation": {
+    "last_reviewed_commit": "9d8408b0893fba1548985e88821f5440b242dfac",
+    "last_reviewed_at": "2026-07-16T09:39:36+00:00"
   }
 }

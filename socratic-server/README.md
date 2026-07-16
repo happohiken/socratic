@@ -66,8 +66,10 @@ La dirección IP la puedes obtener con `hostname -I` o `ifconfig`.
 
 ## Documentación
 
-- [Documentación de la API](../docs/api.md) — Especificación completa de endpoints.
-- [Arquitectura](../docs/architecture.md) — Descripción de la estructura del código.
+- [Documentación de la API](../docs/development/api.md) — Especificación completa de endpoints.
+- [Arquitectura del servidor](../docs/development/architecture.md) — Descripción de la estructura del código.
+- [Índice de documentación para desarrolladores](../docs/development/README.md).
+- [Índice de documentación para agentes](../docs/agent/README.md).
 
 ## Estructura del proyecto
 

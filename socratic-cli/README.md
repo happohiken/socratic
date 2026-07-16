@@ -54,15 +54,33 @@ socratic --url http://192.168.1.10:8885 documents
 | `upload <pdf>` | Subir un PDF al servidor |
 | `documents` | Listar documentos |
 | `document <id>` | Detalle de un documento y sus bloques |
+| `delete <id>` | Eliminar un documento y todos sus asociados (cascada) |
 | `create-study <document_id>` | Crear un estudio para un documento |
 | `studies` | Listar estudios |
 | `study <study_id>` | Consultar el estado de un estudio |
 | `current-block <study_id>` | Obtener el bloque actual de lectura |
 | `complete-block <study_id> <block_id>` | Marcar un bloque como completado y avanzar |
+| `next-block <study_id> [--verbose]` | Obtener, imprimir y completar el bloque actual |
+| `previous-block <study_id> [--verbose]` | Retroceder al bloque anterior |
 | `messages <study_id>` | Listar mensajes de un estudio |
 | `message <study_id> <content> [--role ROLE] [--block-id ID]` | Crear un mensaje |
+| `ask <study_id> <question>` | Pregunta contextual al LLM sobre el bloque actual |
 | `reindex [<document_id>]` | Indexar todos los documentos o un concreto para recuperación |
 | `search-document <id> <query> [--limit N]` | Buscar bloques relevantes (diagnóstico) |
+| `inspect-pdf <pdf> [--format text\|json] [--pages N-M] [--output FILE]` | Inspeccionar la descomposición documental sin subir el PDF |
+| `config import-opencode --provider P --model M (--export-shell\|--print-env)` | Generar variables SOCRATIC_LLM_* desde OpenCode |
+
+> **Pendiente**: la CLI aún no expone el endpoint `/interact` (Turn
+> conversacional con tools). Mientras tanto, `ask` es la forma de
+> preguntar al LLM.
+
+## Documentación
+
+- [Referencia de comandos CLI](../docs/user/cli-reference.md)
+- [Configuración](../docs/user/configuration.md)
+- [Flujos típicos](../docs/user/workflows.md)
+- [Resolución de problemas](../docs/user/troubleshooting.md)
+- [Documentación para agentes sobre la CLI](../docs/agent/cli.md)
 
 ## Tests
 

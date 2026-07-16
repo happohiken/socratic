@@ -8,7 +8,7 @@ deben analizarse antes de implementar.
 
 ## Documentación
 
-- `docs/product-context.md` — especificación completa del producto y arquitectura prevista.
+- `docs/development/product-context.md` — especificación completa del producto y arquitectura prevista.
   Fuente de verdad para decisiones de diseño antes de que exista código.
 - `docs/documentation-methodology.md` — reglas de documentación mínima.
 - La documentación es mínima y on-demand. No cargarla toda al inicio de la sesión.
