@@ -1,6 +1,6 @@
 {
   "framework_version": "0.1.0",
-  "installed_at": "2026-07-16T09:29:01.990153+00:00",
+  "installed_at": "2026-07-18T06:02:34.837061+00:00",
   "source": "/home/david/Developer/agentic-repo-framework",
   "managed_core_skills": [
     "commit-work",
@@ -15,7 +15,7 @@
       "sha256": "efea6f81c51868026c2167996daf2f308ea4a6191054426c69d8e6e946f82137"
     },
     ".agentic/skills/docs-update/SKILL.md": {
-      "sha256": "648218cc5d780ae0a510efedb76f5c6171ec3f567ed7feb42cdeb2f426c7f026"
+      "sha256": "2034118672cbe3b85ec9e226eb8bee248a12226c68c901a669aa8b36d449c451"
     },
     ".claude/skills/commit-work/SKILL.md": {
       "sha256": "4eb8db12d90a1ca36f1654b79a961213da3df224ba8cf78a256630a94467c963"

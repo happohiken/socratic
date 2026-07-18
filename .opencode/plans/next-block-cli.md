@@ -154,4 +154,4 @@ socratic previous-block --verbose <study-id>
 
 ```bash
 cd socratic-cli && python -m pytest tests/test_next_block.py tests/test_previous_block.py -v
-```
+    ```
